@@ -171,6 +171,30 @@ export default function App() {
   const [offlineQueue, setOfflineQueue] = useState<Message[]>([]);
   const [incomingRequests, setIncomingRequests] = useState<any[]>([]);
 
+  // Custom Popups / Toasts / Confirms States
+  const [toast, setToast] = useState<{ message: string; type: "success" | "error" | "info" } | null>(null);
+  const [confirmDialog, setConfirmDialog] = useState<{
+    title: string;
+    message: string;
+    onConfirm: () => void;
+  } | null>(null);
+  const [infoModal, setInfoModal] = useState<{
+    title: string;
+    message: string;
+  } | null>(null);
+
+  const showToast = (message: string, type: "success" | "error" | "info" = "info") => {
+    setToast({ message, type });
+  };
+
+  // Automatically clear toast
+  useEffect(() => {
+    if (toast) {
+      const timer = setTimeout(() => setToast(null), 3500);
+      return () => clearTimeout(timer);
+    }
+  }, [toast]);
+
   // Refs
   const messageEndRef = useRef<HTMLDivElement>(null);
   const sseSourceRef = useRef<EventSource | null>(null);
@@ -271,12 +295,12 @@ export default function App() {
         }
       });
     } else {
-      // Manual PWA instructions alert or inline helper
-      alert(
-        lang === "TR" 
-          ? "iOS için: Safari tarayıcısında Paylaş butonuna basıp 'Ana Ekrana Ekle' seçeneğini kullanın.\nAndroid için: Chrome menüsünden 'Uygulamayı yükle' veya 'Ana ekrana ekle' seçeneğini seçin."
-          : "iOS üçün: Safari brauzerində Paylaş düyməsinə basıb 'Ana Ekrana Əlavə Et' seçimini edin.\nAndroid üçün: Chrome menyusundan 'Tətbiqi quraşdırın' və ya 'Ana ekrana əlavə edin' seçimini edin."
-      );
+      setInfoModal({
+        title: lang === "TR" ? "Uygulamayı Yükle (PWA)" : "Tətbiqi Quraşdırın (PWA)",
+        message: lang === "TR" 
+          ? "iOS için: Safari tarayıcısında Paylaş butonuna basıp 'Ana Ekrana Ekle' seçeneğini kullanın.\n\nAndroid için: Chrome menüsünden 'Uygulamayı yükle' veya 'Ana ekrana ekle' seçeneğini seçin."
+          : "iOS üçün: Safari brauzerində Paylaş düyməsinə basıb 'Ana Ekrana Əlavə Et' seçimini edin.\n\nAndroid üçün: Chrome menyusundan 'Tətbiqi quraşdırın' və ya 'Ana ekrana əlavə edin' seçimini edin."
+      });
     }
   };
 
@@ -360,21 +384,29 @@ export default function App() {
   // Delete Contact Bidirectionally
   const handleDeleteContact = async (contactId: string) => {
     if (!token) return;
-    if (!window.confirm(t.deleteContactConfirm)) return;
-    try {
-      const res = await fetch(`/api/users/contacts/${contactId}`, {
-        method: "DELETE",
-        headers: { "Authorization": `Bearer ${token}` }
-      });
-      if (res.ok) {
-        if (activeContactId === contactId) {
-          setActiveContactId(null);
+    setConfirmDialog({
+      title: t.deleteContact,
+      message: t.deleteContactConfirm,
+      onConfirm: async () => {
+        try {
+          const res = await fetch(`/api/users/contacts/${contactId}`, {
+            method: "DELETE",
+            headers: { "Authorization": `Bearer ${token}` }
+          });
+          if (res.ok) {
+            if (activeContactId === contactId) {
+              setActiveContactId(null);
+            }
+            fetchContacts();
+            showToast(lang === "TR" ? "Kişi başarıyla silindi." : "Kontakt uğurla silindi.", "success");
+          }
+        } catch (e) {
+          console.error("Failed to delete contact", e);
+          showToast(t.errorGeneric, "error");
         }
-        fetchContacts();
+        setConfirmDialog(null);
       }
-    } catch (e) {
-      console.error("Failed to delete contact", e);
-    }
+    });
   };
 
   // Fetch Messages for current active contact
@@ -739,7 +771,7 @@ export default function App() {
         fetchContacts();
       } else {
         const data = await res.json();
-        alert(data.error || "Mesaj gönderilemedi.");
+        showToast(data.error || "Mesaj gönderilemedi.", "error");
         // Remove optimistically added message on hard failure
         setMessages((prev) => prev.filter((m) => m.id !== pendingMsg.id));
       }
@@ -1909,6 +1941,94 @@ export default function App() {
                   </div>
                 </form>
 
+              </div>
+            </div>
+          )}
+
+          {/* Custom Toast Notification */}
+          {toast && (
+            <div className="fixed bottom-6 right-6 z-50 animate-bounce-short">
+              <div className={`flex items-center space-x-3 px-4 py-3 rounded-xl border shadow-2xl ${
+                toast.type === "success" 
+                  ? "bg-[#0b251a] border-[#00a884] text-[#00a884]" 
+                  : toast.type === "error" 
+                    ? "bg-[#2c1519] border-rose-500 text-rose-400" 
+                    : "bg-[#202c33] border-[#2d3a43] text-gray-200"
+              }`}>
+                {toast.type === "success" ? (
+                  <CheckCircle2 className="w-5 h-5 flex-shrink-0" />
+                ) : (
+                  <AlertCircle className="w-5 h-5 flex-shrink-0" />
+                )}
+                <span className="text-xs font-semibold">{toast.message}</span>
+                <button onClick={() => setToast(null)} className="text-current hover:opacity-80 transition-opacity cursor-pointer">
+                  <X className="w-4 h-4 ml-2" />
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Custom Confirm Dialog Modal */}
+          {confirmDialog && (
+            <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+              <div className="bg-[#111b21] border border-[#222e35] rounded-2xl w-full max-w-sm p-5 shadow-2xl animate-scale-in">
+                <div className="flex items-center space-x-3 text-rose-400 mb-4">
+                  <div className="p-2 bg-rose-500/10 rounded-lg">
+                    <Trash2 className="w-5 h-5" />
+                  </div>
+                  <h4 className="text-base font-bold text-white">{confirmDialog.title}</h4>
+                </div>
+                <p className="text-xs text-gray-300 leading-relaxed mb-6">
+                  {confirmDialog.message}
+                </p>
+                <div className="flex justify-end space-x-2.5 text-xs font-semibold">
+                  <button
+                    onClick={() => setConfirmDialog(null)}
+                    className="px-4 py-2.5 bg-[#202c33] hover:bg-[#2a3942] text-white border border-[#222e35] rounded-xl transition-all cursor-pointer active:scale-95"
+                  >
+                    {t.cancel}
+                  </button>
+                  <button
+                    onClick={() => confirmDialog.onConfirm()}
+                    className="px-4 py-2.5 bg-rose-600 hover:bg-rose-500 text-white rounded-xl transition-all cursor-pointer shadow-lg active:scale-95"
+                  >
+                    {lang === "TR" ? "Sil" : "Sil"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Custom Info Modal */}
+          {infoModal && (
+            <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+              <div className="bg-[#111b21] border border-[#222e35] rounded-2xl w-full max-w-md p-6 shadow-2xl relative animate-scale-in">
+                <button
+                  onClick={() => setInfoModal(null)}
+                  className="absolute top-4 right-4 p-1 text-[#8696a0] hover:text-white rounded-full hover:bg-[#202c33] transition-all"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+                
+                <div className="flex items-center space-x-3 mb-4">
+                  <div className="p-2 bg-[#00a884]/10 text-[#00a884] rounded-lg">
+                    <Smartphone className="w-5 h-5" />
+                  </div>
+                  <h4 className="text-base font-bold text-white">{infoModal.title}</h4>
+                </div>
+
+                <div className="text-xs text-gray-300 leading-relaxed mb-4 whitespace-pre-line bg-[#202c33]/40 border border-[#222e35]/60 p-4 rounded-xl">
+                  {infoModal.message}
+                </div>
+
+                <div className="flex justify-end pt-2">
+                  <button
+                    onClick={() => setInfoModal(null)}
+                    className="px-5 py-2.5 bg-[#00a884] hover:bg-[#008f70] text-[#111b21] font-semibold text-xs rounded-xl transition-all cursor-pointer shadow-md active:scale-95"
+                  >
+                    {lang === "TR" ? "Anladım" : "Anladım"}
+                  </button>
+                </div>
               </div>
             </div>
           )}
