@@ -1,0 +1,6 @@
+{
+  "name": "Sade WhatsApp",
+  "description": "Temiz, sade ve kaliteli tasarıma sahip, MongoDB bağlantılı ve PWA destekli WhatsApp benzeri anlık mesajlaşma uygulaması.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
