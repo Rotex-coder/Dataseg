@@ -11,3 +11,9 @@ services:
         value: 3000
       - key: GEMINI_API_KEY
         sync: false # Set your Gemini API key in the Render Dashboard
+      - key: VAPID_PUBLIC_KEY
+        sync: false # Required for push notifications to work when the app is closed. Generate with: node -e "console.log(require('web-push').generateVAPIDKeys())"
+      - key: VAPID_PRIVATE_KEY
+        sync: false # Pair with VAPID_PUBLIC_KEY above. Keep this secret, never commit it.
+      - key: VAPID_SUBJECT
+        sync: false # e.g. mailto:you@example.com - contact info push services may use to reach you
