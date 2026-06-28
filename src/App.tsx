@@ -167,7 +167,6 @@ export default function App() {
 
   // Online/Offline & Synchronization States
   const [isOnline, setIsOnline] = useState<boolean>(navigator.onLine);
-  const [isSimulatingOffline, setIsSimulatingOffline] = useState<boolean>(false);
   const [offlineQueue, setOfflineQueue] = useState<Message[]>([]);
   const [incomingRequests, setIncomingRequests] = useState<any[]>([]);
 
@@ -225,6 +224,15 @@ export default function App() {
   useEffect(() => {
     if ("Notification" in window) {
       setNotificationPermission(Notification.permission);
+      
+      // Automatically ask for permission if it is still 'default' when entering the app
+      if (Notification.permission === "default") {
+        Notification.requestPermission().then((permission) => {
+          setNotificationPermission(permission);
+        }).catch((err) => {
+          console.log("Auto-notification request bypassed (requires user interaction in some browsers):", err);
+        });
+      }
     }
   }, []);
 
@@ -234,6 +242,51 @@ export default function App() {
       const permission = await Notification.requestPermission();
       setNotificationPermission(permission);
     }
+  };
+
+  // Test Push Notification Handler
+  const sendTestNotification = () => {
+    if (!("Notification" in window)) {
+      showToast(lang === "TR" ? "Tarayıcınız anlık bildirimleri desteklemiyor." : "Brauzeriniz anlıq bildirişləri dəstəkləmir.", "error");
+      return;
+    }
+    if (Notification.permission !== "granted") {
+      showToast(lang === "TR" ? "Lütfen önce yukarıdaki 'Bildirim İzni Ver' seçeneği ile izin verin." : "Zəhmət olmasa əvvəlcə yuxarıdakı 'Bildiriş İcazəsi Ver' seçimi ilə icazə verin.", "error");
+      requestNotificationPermission();
+      return;
+    }
+
+    showToast(
+      lang === "TR" 
+        ? "Test bildirimi 4 saniye sonra gönderilecek. Lütfen sekmeyi kapatın, arka plana alın veya cihazınızı kilitleyin!" 
+        : "Test bildirişi 4 saniyə sonra göndəriləcək. Zəhmət olmasa səhifəni arxa plana keçirin və ya cihazınızı kilidləyin!", 
+      "info"
+    );
+
+    setTimeout(() => {
+      const title = "Sade WhatsApp (Test)";
+      const options = {
+        body: lang === "TR" ? "Harika! Push bildirimleri ve PWA başarıyla çalışıyor! 🎉" : "Əla! Push bildirişləri və PWA uğurla işləyir! 🎉",
+        icon: user?.avatar || "/icon-192.png",
+        badge: "/icon-192.png",
+        tag: "test-notification",
+        data: {
+          senderId: "test-bot"
+        }
+      };
+
+      if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+        navigator.serviceWorker.ready.then((registration) => {
+          registration.showNotification(title, options);
+        });
+      } else {
+        try {
+          new Notification(title, options);
+        } catch (err) {
+          console.error("Local notification failed, serviceWorker fallback:", err);
+        }
+      }
+    }, 4000);
   };
 
   // Capture PWA Install Prompt
@@ -441,7 +494,7 @@ export default function App() {
 
   // Synchronize offline queue when coming back online
   useEffect(() => {
-    const effectiveOnline = isOnline && !isSimulatingOffline;
+    const effectiveOnline = isOnline;
     if (effectiveOnline && offlineQueue.length > 0 && token) {
       const syncMessages = async () => {
         const queueToSync = [...offlineQueue];
@@ -474,7 +527,7 @@ export default function App() {
       };
       syncMessages();
     }
-  }, [isOnline, isSimulatingOffline, offlineQueue, token]);
+  }, [isOnline, offlineQueue, token]);
 
   // Fetch contacts list and incoming requests when authenticated
   useEffect(() => {
@@ -730,7 +783,7 @@ export default function App() {
     const textToSend = typedMessage;
     setTypedMessage(""); // Clear early for native speed feeling
 
-    const effectiveOnline = isOnline && !isSimulatingOffline;
+    const effectiveOnline = isOnline;
 
     // Create custom pending message structure
     const pendingMsg: Message = {
@@ -1240,15 +1293,15 @@ export default function App() {
             </div>
 
             {/* Offline Status Banner */}
-            {(!isOnline || isSimulatingOffline) && (
+            {!isOnline && (
               <div className="bg-[#ffd279] text-[#111b21] px-4 py-2.5 flex items-center space-x-2.5 text-xs font-semibold select-none shadow-md border-b border-[#cca040]">
                 <Globe className="w-4 h-4 text-[#111b21] animate-pulse" />
                 <div className="flex-1">
                   <span>{lang === "TR" ? "Bilgisayar bağlı değil" : "Kompüter qoşulmayıb"}</span>
                   <p className="text-[10px] text-[#111b21]/70 font-normal mt-0.5">
                     {lang === "TR" 
-                      ? "Bağlantınızı kontrol edin veya Çevrimdışı Simülatörü kapatın." 
-                      : "Bağlantınızı yoxlayın və ya Oflayn Simulyatoru söndürün."}
+                      ? "Bağlantınızı kontrol edin." 
+                      : "Bağlantınızı yoxlayın."}
                   </p>
                 </div>
               </div>
@@ -1668,6 +1721,26 @@ export default function App() {
                     : "Mesajlaşmağa başlamaq üçün sol menyudan bir söhbət seçin və ya yeni istifadəçi əlavə edin."}
                 </p>
 
+                {/* Temporary Push Notification Test Card */}
+                <div className="mt-8 w-full max-w-xs p-4 bg-[#00a884]/5 border border-[#00a884]/25 rounded-2xl flex flex-col items-center space-y-3 shadow-lg">
+                  <div className="flex items-center space-x-2 text-[#00a884]">
+                    <Bell className="w-4 h-4" />
+                    <span className="text-[11px] font-bold uppercase tracking-wider">{lang === "TR" ? "Bildirim Test Paneli" : "Bildiriş Test Paneli"}</span>
+                  </div>
+                  <p className="text-[11px] text-gray-400">
+                    {lang === "TR" 
+                      ? "Push bildirimleri test etmek için butona basın, ardından sekmeyi kapatın veya arka plana atın!" 
+                      : "Push bildirişləri test etmək üçün düyməyə basın, ardından səhifəni bağlayın və ya arxa plana keçirin!"}
+                  </p>
+                  <button
+                    onClick={sendTestNotification}
+                    className="w-full py-2 bg-[#00a884] hover:bg-[#008f70] text-[#111b21] font-bold text-xs rounded-xl transition-all shadow-md active:scale-95 cursor-pointer flex items-center justify-center space-x-1.5"
+                  >
+                    <Bell className="w-3.5 h-3.5" />
+                    <span>{lang === "TR" ? "Test Bildirimi Gönder (4 Saniye)" : "Test Bildirişi Göndər (4 Saniyə)"}</span>
+                  </button>
+                </div>
+
                 {/* Elegant instructions to install PWA on empty screen */}
                 {!isPwaInstalled && (
                   <div className="mt-10 max-w-sm p-4 bg-[#111b21]/70 border border-[#222e35] rounded-2xl flex flex-col items-center space-y-3 shadow-md">
@@ -1692,144 +1765,63 @@ export default function App() {
 
           {/* 3. SETTINGS MODAL */}
           {isSettingsOpen && (
-            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-              <div className="bg-[#111b21] border border-[#222e35] rounded-2xl w-full max-w-md p-6 shadow-2xl relative max-h-[90vh] flex flex-col">
+            <div className="fixed inset-0 bg-black/75 backdrop-blur-md flex items-center justify-center z-50 p-4">
+              <div className="bg-[#111b21] border border-[#222e35] rounded-3xl w-full max-w-md p-6 shadow-2xl relative max-h-[90vh] flex flex-col overflow-hidden animate-fade-in">
                 
+                {/* Close Button */}
                 <button 
                   onClick={() => setIsSettingsOpen(false)}
-                  className="absolute top-4 right-4 p-1 text-[#8696a0] hover:text-white rounded-full hover:bg-[#202c33] transition-all z-10"
+                  className="absolute top-5 right-5 p-1.5 text-[#8696a0] hover:text-white rounded-full hover:bg-[#202c33] transition-all z-10"
                 >
                   <X className="w-5 h-5" />
                 </button>
 
+                {/* Header */}
                 <div className="flex items-center space-x-3 mb-6 flex-shrink-0">
-                  <div className="p-2 bg-[#202c33] text-[#00a884] rounded-lg border border-[#222e35]">
+                  <div className="p-2.5 bg-[#202c33] text-[#00a884] rounded-xl border border-[#222e35]/60 shadow-inner">
                     <Settings className="w-5 h-5" />
                   </div>
-                  <h3 className="text-lg font-bold text-white">{t.settings}</h3>
+                  <div>
+                    <h3 className="text-lg font-extrabold text-white tracking-tight">{t.settings}</h3>
+                    <p className="text-[11px] text-[#8696a0]">{lang === "TR" ? "Hesap ve uygulama tercihleri" : "Hesab və tətbiq tənzimləmələri"}</p>
+                  </div>
                 </div>
 
-                <div className="space-y-6 overflow-y-auto pr-1 flex-1 scrollbar-thin scrollbar-thumb-[#202c33] scrollbar-track-transparent">
+                {/* Content */}
+                <div className="space-y-5 overflow-y-auto pr-1 flex-1 scrollbar-thin scrollbar-thumb-[#202c33] scrollbar-track-transparent">
                   
-                  {/* Connection Status Section */}
-                  <div className="bg-[#202c33]/50 p-4 rounded-xl border border-[#222e35] space-y-3">
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-start space-x-3">
-                        <Globe className={`w-5 h-5 mt-0.5 ${(isOnline && !isSimulatingOffline) ? "text-[#00a884]" : "text-gray-400"}`} />
-                        <div className="text-xs">
-                          <h4 className="font-bold text-white mb-0.5">
-                            {lang === "TR" ? "Bağlantı Durumu" : "Birləşmə Statusu"}
-                          </h4>
-                          <p className="text-[#8696a0] leading-relaxed">
-                            {(isOnline && !isSimulatingOffline) 
-                              ? (lang === "TR" ? "Çevrimiçi (İnternet Bağlı)" : "Onlayn (İnternet Qoşuludur)")
-                              : (lang === "TR" ? "Çevrimdışı (İnternet Yok)" : "Oflayn (İnternet Yoxdur)")}
-                          </p>
-                        </div>
+                  {/* Connection Status Section (Elegant indicator only) */}
+                  <div className="bg-[#0b141a]/60 p-4 rounded-2xl border border-[#222e35]/50 flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                      <div className={`p-2 rounded-lg ${(isOnline) ? "bg-[#00a884]/10 text-[#00a884]" : "bg-red-500/10 text-red-400"}`}>
+                        <Globe className="w-4 h-4" />
                       </div>
-                      <span className={`w-2.5 h-2.5 rounded-full mt-1.5 animate-pulse ${(isOnline && !isSimulatingOffline) ? "bg-[#00a884]" : "bg-red-500"}`} />
-                    </div>
-
-                    <button
-                      onClick={() => setIsSimulatingOffline((prev) => !prev)}
-                      className={`w-full py-2 text-xs font-bold rounded-lg border transition-all cursor-pointer flex items-center justify-center space-x-2 ${
-                        isSimulatingOffline 
-                          ? "bg-rose-500/20 hover:bg-rose-500/30 text-rose-400 border-rose-950/30" 
-                          : "bg-[#202c33] hover:bg-[#2a3942] text-white border-[#222e35]"
-                      }`}
-                    >
-                      <Globe className="w-3.5 h-3.5" />
-                      <span>
-                        {isSimulatingOffline 
-                          ? (lang === "TR" ? "Çevrimdışı Simülasyonunu Kapat" : "Oflayn Simulyasiyasını Söndür")
-                          : (lang === "TR" ? "Çevrimdışı Modu Simüle Et" : "Oflayn Modu Simulyasiya Et")}
-                      </span>
-                    </button>
-                  </div>
-                  
-                  {/* Language Settings Section */}
-                  <div className="space-y-2">
-                    <label className="text-xs font-semibold text-[#8696a0] uppercase tracking-wider flex items-center gap-1.5">
-                      <Languages className="w-4 h-4 text-[#00a884]" />
-                      {t.language}
-                    </label>
-                    <div className="grid grid-cols-2 gap-3 bg-[#0b141a] p-1.5 rounded-xl border border-[#222e35]">
-                      <button
-                        onClick={() => handleLanguageChange("TR")}
-                        className={`py-2 px-4 rounded-lg text-xs font-bold transition-all cursor-pointer ${lang === "TR" ? "bg-[#00a884] text-[#111b21]" : "text-gray-400 hover:text-white"}`}
-                      >
-                        Türkçe
-                      </button>
-                      <button
-                        onClick={() => handleLanguageChange("AZ")}
-                        className={`py-2 px-4 rounded-lg text-xs font-bold transition-all cursor-pointer ${lang === "AZ" ? "bg-[#00a884] text-[#111b21]" : "text-gray-400 hover:text-white"}`}
-                      >
-                        Azerbaycan
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Browser Native Notification Permission Section */}
-                  <div className="bg-[#202c33]/50 p-4 rounded-xl border border-[#222e35] space-y-3">
-                    <div className="flex items-start space-x-3">
-                      <Bell className="w-5 h-5 text-[#00a884] mt-0.5" />
-                      <div className="flex-1 text-xs">
-                        <h4 className="font-bold text-white mb-0.5">Anlık Bildirimler</h4>
-                        <p className="text-[#8696a0] leading-relaxed">
-                          {lang === "TR" 
-                            ? "Yeni bir mesaj geldiğinde tarayıcı üzerinden anlık sesli bildirimler almak için izni aktif edin." 
-                            : "Yeni mesaj gəldikdə brauzer vasitəsilə bildirişlər almaq üçün icazəni aktiv edin."}
+                      <div className="text-xs">
+                        <h4 className="font-bold text-white">
+                          {lang === "TR" ? "Ağ Bağlantısı" : "Şəbəkə Qoşulması"}
+                        </h4>
+                        <p className="text-[#8696a0] text-[11px]">
+                          {(isOnline) 
+                            ? (lang === "TR" ? "Çevrimiçi" : "Onlayn")
+                            : (lang === "TR" ? "Bağlantı Yok" : "Bağlantı Yoxdur")}
                         </p>
                       </div>
                     </div>
-                    
-                    {notificationPermission === "granted" ? (
-                      <div className="text-[11px] font-semibold text-[#00a884] flex items-center gap-1.5 bg-[#0b141a] px-3 py-2 rounded-lg border border-[#222e35]">
-                        <CheckCircle2 className="w-4 h-4" />
-                        {t.notificationGranted}
-                      </div>
-                    ) : notificationPermission === "denied" ? (
-                      <div className="text-[11px] font-semibold text-rose-400 flex items-center gap-1.5 bg-[#0b141a] px-3 py-2 rounded-lg border border-rose-950/30">
-                        <AlertCircle className="w-4 h-4" />
-                        {t.notificationBlocked}
-                      </div>
-                    ) : (
-                      <button
-                        onClick={requestNotificationPermission}
-                        className="w-full py-2 bg-[#202c33] hover:bg-[#2a3942] text-xs font-bold text-white rounded-lg border border-[#222e35] transition-all cursor-pointer flex items-center justify-center space-x-2"
-                      >
-                        <Bell className="w-3.5 h-3.5 text-[#00a884]" />
-                        <span>{t.notificationPermission}</span>
-                      </button>
-                    )}
+                    <span className={`w-2.5 h-2.5 rounded-full animate-pulse ${(isOnline) ? "bg-[#00a884] shadow-[0_0_8px_#00a884]" : "bg-red-500 shadow-[0_0_8px_#f43f5e]"}`} />
                   </div>
 
-                  {/* Profile Picture Update Section */}
-                  <div className="bg-[#202c33]/50 p-4 rounded-xl border border-[#222e35] space-y-4">
-                    <label className="text-xs font-semibold text-[#8696a0] uppercase tracking-wider flex items-center gap-1.5">
-                      <Camera className="w-4 h-4 text-[#00a884]" />
-                      {lang === "TR" ? "Profil Fotoğrafı" : "Profil Şəkli"}
-                    </label>
-                    
+                  {/* Profile Section with Avatar Updater */}
+                  <div className="bg-[#1e2a30]/30 p-4 rounded-2xl border border-[#222e35]/60 space-y-4">
                     <div className="flex items-center space-x-4">
-                      <div className="relative flex-shrink-0">
+                      <div className="relative group cursor-pointer flex-shrink-0">
                         <img 
                           src={user?.avatar} 
-                          alt="Avatar preview" 
-                          className="w-16 h-16 rounded-full object-cover border-2 border-[#00a884] bg-[#0b141a] shadow-md"
+                          alt="Avatar" 
+                          className="w-16 h-16 rounded-full object-cover border-2 border-[#00a884] bg-[#0b141a] shadow-lg group-hover:opacity-75 transition-all"
                           referrerPolicy="no-referrer"
                         />
-                        {avatarLoading && (
-                          <div className="absolute inset-0 bg-black/60 rounded-full flex items-center justify-center">
-                            <span className="w-5 h-5 border-2 border-[#00a884] border-t-transparent rounded-full animate-spin"></span>
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="flex-1 space-y-1.5">
-                        <label className="inline-flex items-center px-4 py-2 bg-[#00a884] hover:bg-[#008f70] active:scale-[0.98] text-[#111b21] text-xs font-bold rounded-xl transition-all cursor-pointer shadow-md select-none">
-                          <Plus className="w-3.5 h-3.5 mr-1.5" />
-                          {lang === "TR" ? "Görsel Seç" : "Şəkil Seç"}
+                        <label className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all cursor-pointer">
+                          <Camera className="w-5 h-5 text-white" />
                           <input 
                             type="file" 
                             accept="image/*" 
@@ -1838,29 +1830,101 @@ export default function App() {
                             disabled={avatarLoading}
                           />
                         </label>
-                        <p className="text-[10px] text-[#8696a0]">
-                          {lang === "TR" ? "En fazla 4MB boyutta bir görsel yükleyin." : "Maksimum 4MB ölçüdə şəkil yükləyin."}
-                        </p>
+                        {avatarLoading && (
+                          <div className="absolute inset-0 bg-black/75 rounded-full flex items-center justify-center">
+                            <span className="w-5 h-5 border-2 border-[#00a884] border-t-transparent rounded-full animate-spin"></span>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex-1 min-w-0">
+                        <h4 className="text-sm font-bold text-white truncate">{user?.name}</h4>
+                        <p className="text-xs text-[#00a884] font-mono truncate">{user?.username}</p>
+                        <p className="text-[10px] text-[#8696a0] mt-0.5">{lang === "TR" ? "Profil fotoğrafını değiştirmek için üzerine tıklayın." : "Profil şəklini dəyişmək üçün üzərinə vurun."}</p>
                       </div>
                     </div>
 
                     {avatarError && (
-                      <p className="text-xs text-rose-400 font-semibold bg-rose-950/20 border border-rose-950/40 px-3 py-2 rounded-lg">
-                        {avatarError}
-                      </p>
+                      <div className="text-xs text-rose-400 font-semibold bg-rose-950/20 border border-rose-950/40 px-3 py-2 rounded-xl flex items-center gap-1.5">
+                        <AlertCircle className="w-3.5 h-3.5" />
+                        <span>{avatarError}</span>
+                      </div>
                     )}
 
                     {avatarSuccess && (
-                      <p className="text-xs text-[#00a884] font-semibold bg-green-950/20 border border-green-950/40 px-3 py-2 rounded-lg flex items-center gap-1.5">
+                      <div className="text-xs text-[#00a884] font-semibold bg-green-950/20 border border-green-950/40 px-3 py-2 rounded-xl flex items-center gap-1.5">
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        <span>{lang === "TR" ? "Profil resmi güncellendi!" : "Profil şəkli yeniləndi!"}</span>
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Language Settings Section */}
+                  <div className="space-y-2 bg-[#0b141a]/30 p-4 rounded-2xl border border-[#222e35]/50">
+                    <label className="text-[11px] font-bold text-[#8696a0] uppercase tracking-wider flex items-center gap-2">
+                      <Languages className="w-4 h-4 text-[#00a884]" />
+                      {t.language}
+                    </label>
+                    <div className="grid grid-cols-2 gap-2 bg-[#0b141a] p-1 rounded-xl border border-[#222e35]/80">
+                      <button
+                        onClick={() => handleLanguageChange("TR")}
+                        className={`py-2 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer ${lang === "TR" ? "bg-[#00a884] text-[#111b21] shadow-md" : "text-gray-400 hover:text-white"}`}
+                      >
+                        Türkçe
+                      </button>
+                      <button
+                        onClick={() => handleLanguageChange("AZ")}
+                        className={`py-2 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer ${lang === "AZ" ? "bg-[#00a884] text-[#111b21] shadow-md" : "text-gray-400 hover:text-white"}`}
+                      >
+                        Azerbaycan
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Browser Native Notification Permission Section */}
+                  <div className="bg-[#0b141a]/40 p-4 rounded-2xl border border-[#222e35]/50 space-y-3">
+                    <div className="flex items-start space-x-3">
+                      <div className="p-2 bg-[#00a884]/10 text-[#00a884] rounded-lg">
+                        <Bell className="w-4 h-4" />
+                      </div>
+                      <div className="flex-1 text-xs">
+                        <h4 className="font-bold text-white mb-0.5">Anlık Bildirimler</h4>
+                        <p className="text-[#8696a0] leading-relaxed text-[11px]">
+                          {lang === "TR" 
+                            ? "Yeni mesaj geldiğinde sesli bildirimler almak için anlık bildirim izni vermelisiniz." 
+                            : "Yeni mesaj gəldikdə səsli bildirişlər almaq üçün brauzer bildiriş icazəsi verməlisiniz."}
+                        </p>
+                      </div>
+                    </div>
+                    
+                    {notificationPermission === "granted" ? (
+                      <div className="text-[11px] font-semibold text-[#00a884] flex items-center gap-1.5 bg-[#0b141a] px-3 py-2.5 rounded-xl border border-[#00a884]/20">
                         <CheckCircle2 className="w-4 h-4" />
-                        {lang === "TR" ? "Profil resmi başarıyla güncellendi!" : "Profil şəkli uğurla yeniləndi!"}
-                      </p>
+                        {t.notificationGranted}
+                      </div>
+                    ) : notificationPermission === "denied" ? (
+                      <div className="text-[11px] font-semibold text-rose-400 flex items-center gap-1.5 bg-rose-950/20 px-3 py-2.5 rounded-xl border border-rose-950/40">
+                        <AlertCircle className="w-4 h-4" />
+                        {t.notificationBlocked}
+                      </div>
+                    ) : (
+                      <button
+                        onClick={requestNotificationPermission}
+                        className="w-full py-2.5 bg-[#202c33] hover:bg-[#2a3942] text-xs font-bold text-white rounded-xl border border-[#222e35] transition-all cursor-pointer flex items-center justify-center space-x-2"
+                      >
+                        <Bell className="w-3.5 h-3.5 text-[#00a884]" />
+                        <span>{t.notificationPermission}</span>
+                      </button>
                     )}
                   </div>
 
                   {/* Footer App Info */}
-                  <div className="text-center text-[10px] text-[#8696a0] pt-2">
-                    <p>Sade WhatsApp v1.0.0 • Kendiniz ve arkadaşlarınız için.</p>
+                  <div className="text-center text-[10px] text-[#8696a0] pt-4 border-t border-[#222e35]/40 flex flex-col items-center justify-center gap-1">
+                    <div className="flex items-center space-x-1.5 text-white/80 font-bold">
+                      <MessageCircle className="w-3.5 h-3.5 text-[#00a884]" />
+                      <span>Sade WhatsApp</span>
+                    </div>
+                    <p className="text-[9px]">v1.0.0 • Kendiniz ve arkadaşlarınız için.</p>
                   </div>
 
                 </div>
