@@ -580,7 +580,7 @@ export default function App() {
                 const options = {
                   body: msg.text,
                   icon: senderAvatar,
-                  badge: "/badge.svg",
+                  badge: "/icon.png",
                   tag: msg.senderId, // Groups notifications from the same sender
                   renotify: true,
                   data: { senderId: msg.senderId }
