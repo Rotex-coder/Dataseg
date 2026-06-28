@@ -264,11 +264,14 @@ export default function App() {
     );
 
     setTimeout(() => {
-      const title = "Sade WhatsApp (Test)";
+      const isTr = lang === "TR";
+      const title = isTr ? "Aysel Yılmaz" : "Aysel Məmmədova";
       const options = {
-        body: lang === "TR" ? "Harika! Push bildirimleri ve PWA başarıyla çalışıyor! 🎉" : "Əla! Push bildirişləri və PWA uğurla işləyir! 🎉",
-        icon: user?.avatar || "/icon-192.png",
-        badge: "/icon-192.png",
+        body: isTr 
+          ? "Selam! Push bildirimleri ve PWA harika çalışıyor! 🎉" 
+          : "Salam! Anlıq bildirişlər və PWA əla işləyir! 🎉",
+        icon: "https://api.dicebear.com/7.x/avataaars/svg?seed=Aysel",
+        badge: "/icon.png",
         tag: "test-notification",
         data: {
           senderId: "test-bot"

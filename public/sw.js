@@ -42,7 +42,7 @@ self.addEventListener('fetch', (event) => {
 
 // Push Notification handler
 self.addEventListener('push', (event) => {
-  let data = { title: 'Sade WhatsApp', body: 'Yeni bir mesajınız var!', icon: 'https://img.icons8.com/color/192/whatsapp--v1.png' };
+  let data = { title: 'Sade WhatsApp', body: 'Yeni bir mesajınız var!', icon: '/icon.png' };
   
   if (event.data) {
     try {
@@ -54,8 +54,8 @@ self.addEventListener('push', (event) => {
 
   const options = {
     body: data.body,
-    icon: data.icon || 'https://img.icons8.com/color/192/whatsapp--v1.png',
-    badge: 'https://img.icons8.com/color/96/whatsapp--v1.png',
+    icon: data.icon || '/icon.png',
+    badge: '/icon.png',
     vibrate: [100, 50, 100],
     data: {
       dateOfArrival: Date.now(),
