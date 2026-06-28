@@ -1691,23 +1691,23 @@ export default function App() {
           {/* 3. SETTINGS MODAL */}
           {isSettingsOpen && (
             <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-              <div className="bg-[#111b21] border border-[#222e35] rounded-2xl w-full max-w-md p-6 shadow-2xl relative">
+              <div className="bg-[#111b21] border border-[#222e35] rounded-2xl w-full max-w-md p-6 shadow-2xl relative max-h-[90vh] flex flex-col">
                 
                 <button 
                   onClick={() => setIsSettingsOpen(false)}
-                  className="absolute top-4 right-4 p-1 text-[#8696a0] hover:text-white rounded-full hover:bg-[#202c33] transition-all"
+                  className="absolute top-4 right-4 p-1 text-[#8696a0] hover:text-white rounded-full hover:bg-[#202c33] transition-all z-10"
                 >
                   <X className="w-5 h-5" />
                 </button>
 
-                <div className="flex items-center space-x-3 mb-6">
+                <div className="flex items-center space-x-3 mb-6 flex-shrink-0">
                   <div className="p-2 bg-[#202c33] text-[#00a884] rounded-lg border border-[#222e35]">
                     <Settings className="w-5 h-5" />
                   </div>
                   <h3 className="text-lg font-bold text-white">{t.settings}</h3>
                 </div>
 
-                <div className="space-y-6">
+                <div className="space-y-6 overflow-y-auto pr-1 flex-1 scrollbar-thin scrollbar-thumb-[#202c33] scrollbar-track-transparent">
                   
                   {/* Connection Status Section */}
                   <div className="bg-[#202c33]/50 p-4 rounded-xl border border-[#222e35] space-y-3">
@@ -1869,7 +1869,7 @@ export default function App() {
           {/* 4. ADD CONTACT MODAL */}
           {isAddContactOpen && (
             <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-              <div className="bg-[#111b21] border border-[#222e35] rounded-2xl w-full max-w-sm p-6 shadow-2xl relative">
+              <div className="bg-[#111b21] border border-[#222e35] rounded-2xl w-full max-w-sm p-6 shadow-2xl relative max-h-[90vh] overflow-y-auto">
                 
                 <button 
                   onClick={() => {
