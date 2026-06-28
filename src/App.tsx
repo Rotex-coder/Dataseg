@@ -140,6 +140,18 @@ export default function App() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [typedMessage, setTypedMessage] = useState("");
 
+  const activeContactIdRef = useRef<string | null>(null);
+  const contactsRef = useRef<(User & { lastMessage: Message | null })[]>([]);
+
+  // Sync state with refs to prevent EventSource reconnection thrashing
+  useEffect(() => {
+    activeContactIdRef.current = activeContactId;
+  }, [activeContactId]);
+
+  useEffect(() => {
+    contactsRef.current = contacts;
+  }, [contacts]);
+
   // Modals & Menu States
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isAddContactOpen, setIsAddContactOpen] = useState(false);
@@ -253,37 +265,54 @@ export default function App() {
       
       const now = ctx.currentTime;
       
-      // Tone 1: Sweet bubble-pop pluck (587.33 Hz -> D5, ramping up to 880 Hz -> A5)
+      // Let's build a beautiful, high-end warm arpeggio chime (A-major 9th feeling):
+      // Tone 1 (Warm body undercurrent): C#5 (554.37 Hz), starts at 0.0s, decays beautifully over 0.8s
       const osc1 = ctx.createOscillator();
       const gain1 = ctx.createGain();
       osc1.type = "sine";
-      osc1.frequency.setValueAtTime(587.33, now);
-      osc1.frequency.exponentialRampToValueAtTime(880, now + 0.12);
-      
-      gain1.gain.setValueAtTime(0.18, now);
-      gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
-      
+      osc1.frequency.setValueAtTime(554.37, now);
+      gain1.gain.setValueAtTime(0.08, now);
+      gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.8);
       osc1.connect(gain1);
       gain1.connect(ctx.destination);
-      
       osc1.start(now);
-      osc1.stop(now + 0.25);
+      osc1.stop(now + 0.8);
 
-      // Tone 2: Warm ambient chime (880 Hz -> A5, ramping up to 1318.51 Hz -> E6)
+      // Tone 2 (Sweet mid chime): E5 (659.25 Hz), starts at 0.04s, decays beautifully over 0.6s
       const osc2 = ctx.createOscillator();
       const gain2 = ctx.createGain();
       osc2.type = "sine";
-      osc2.frequency.setValueAtTime(880, now + 0.08);
-      osc2.frequency.exponentialRampToValueAtTime(1318.51, now + 0.2);
-      
-      gain2.gain.setValueAtTime(0.12, now + 0.08);
-      gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
-      
+      osc2.frequency.setValueAtTime(659.25, now + 0.04);
+      gain2.gain.setValueAtTime(0.09, now + 0.04);
+      gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.64);
       osc2.connect(gain2);
       gain2.connect(ctx.destination);
-      
-      osc2.start(now + 0.08);
-      osc2.stop(now + 0.35);
+      osc2.start(now + 0.04);
+      osc2.stop(now + 0.64);
+
+      // Tone 3 (High clear sparkling bell): A5 (880.00 Hz), starts at 0.08s, decays over 0.5s
+      const osc3 = ctx.createOscillator();
+      const gain3 = ctx.createGain();
+      osc3.type = "sine";
+      osc3.frequency.setValueAtTime(880.00, now + 0.08);
+      gain3.gain.setValueAtTime(0.10, now + 0.08);
+      gain3.gain.exponentialRampToValueAtTime(0.001, now + 0.58);
+      osc3.connect(gain3);
+      gain3.connect(ctx.destination);
+      osc3.start(now + 0.08);
+      osc3.stop(now + 0.58);
+
+      // Tone 4 (Ultra-clean modern finish): B5 (987.77 Hz), starts at 0.12s, decays over 0.4s
+      const osc4 = ctx.createOscillator();
+      const gain4 = ctx.createGain();
+      osc4.type = "sine";
+      osc4.frequency.setValueAtTime(987.77, now + 0.12);
+      gain4.gain.setValueAtTime(0.08, now + 0.12);
+      gain4.gain.exponentialRampToValueAtTime(0.001, now + 0.52);
+      osc4.connect(gain4);
+      gain4.connect(ctx.destination);
+      osc4.start(now + 0.12);
+      osc4.stop(now + 0.52);
     } catch (e) {
       console.error("Failed to play notification sound:", e);
     }
@@ -572,7 +601,7 @@ export default function App() {
 
           // Real-time: Handle messages read confirmation
           if (data.type === "messages_read") {
-            if (user && data.senderId === user.id && activeContactId === data.readerId) {
+            if (user && data.senderId === user.id && activeContactIdRef.current === data.readerId) {
               setMessages((prev) => 
                 prev.map((msg) => 
                   msg.senderId === user.id && msg.receiverId === data.readerId 
@@ -588,9 +617,10 @@ export default function App() {
           // Real-time: Handle incoming message
           if (data.type === "new_message") {
             const msg: Message = data.message;
+            const currentActiveContactId = activeContactIdRef.current;
             
             // If the message is for our current active chat, append it
-            if (activeContactId && (msg.senderId === activeContactId || msg.receiverId === activeContactId)) {
+            if (currentActiveContactId && (msg.senderId === currentActiveContactId || msg.receiverId === currentActiveContactId)) {
               setMessages((prev) => {
                 // Prevent duplicate additions
                 if (prev.some(m => m.id === msg.id)) return prev;
@@ -598,14 +628,14 @@ export default function App() {
               });
 
               // Send read receipt if it's incoming message from active contact
-              if (msg.senderId === activeContactId) {
+              if (msg.senderId === currentActiveContactId) {
                 fetch("/api/messages/read", {
                   method: "POST",
                   headers: {
                     "Content-Type": "application/json",
                     "Authorization": `Bearer ${token}`
                   },
-                  body: JSON.stringify({ contactId: activeContactId })
+                  body: JSON.stringify({ contactId: currentActiveContactId })
                 }).catch(e => console.error("Error sending read receipt", e));
               }
             }
@@ -617,10 +647,10 @@ export default function App() {
             if (msg.senderId !== user.id) {
               playNotificationSound();
               const isTabBackground = document.hidden;
-              const isChatNotFocused = activeContactId !== msg.senderId;
+              const isChatNotFocused = currentActiveContactId !== msg.senderId;
 
               if ((isTabBackground || isChatNotFocused) && Notification.permission === "granted") {
-                const senderUser = contacts.find((c) => c.id === msg.senderId);
+                const senderUser = contactsRef.current.find((c) => c.id === msg.senderId);
                 const senderAvatar = data.senderAvatar || senderUser?.avatar || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(data.senderName || "User")}`;
                 const title = data.senderName || "Yeni Mesaj";
                 const options = {
@@ -690,11 +720,16 @@ export default function App() {
         }
       };
 
+      // Add connection error logger
+      sse.onerror = (err) => {
+        console.error("SSE Connection Stream Error/Disconnect. Re-establishing...", err);
+      };
+
       return () => {
         sse.close();
       };
     }
-  }, [user, token, activeContactId]);
+  }, [user, token]);
 
   // Scroll to bottom on messages update
   useEffect(() => {
