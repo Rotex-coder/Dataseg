@@ -88,11 +88,44 @@ export async function findUserById(id: string): Promise<User | null> {
       username: userDoc.username,
       avatar: userDoc.avatar,
       contacts: userDoc.contacts || [],
-      createdAt: userDoc.createdAt
+      createdAt: userDoc.createdAt,
+      pushSubscriptions: userDoc.pushSubscriptions || []
     };
   } catch (e) {
     return null;
   }
+}
+
+// Add or update a push subscription for a user (deduplicated by endpoint)
+export async function addPushSubscription(userId: string, subscription: { endpoint: string; keys: { p256dh: string; auth: string } }): Promise<void> {
+  const activeDb = await getConnectedDb();
+  // Remove any existing subscription with the same endpoint first (avoids duplicates on resubscribe)
+  await activeDb.collection("users").updateOne(
+    { _id: userId as any },
+    { $pull: { pushSubscriptions: { endpoint: subscription.endpoint } } } as any
+  );
+  await activeDb.collection("users").updateOne(
+    { _id: userId as any },
+    { $push: { pushSubscriptions: subscription } } as any
+  );
+}
+
+// Remove a push subscription (e.g. when the browser reports it's no longer valid, or user logs out)
+export async function removePushSubscription(userId: string, endpoint: string): Promise<void> {
+  const activeDb = await getConnectedDb();
+  await activeDb.collection("users").updateOne(
+    { _id: userId as any },
+    { $pull: { pushSubscriptions: { endpoint } } } as any
+  );
+}
+
+// Remove a dead subscription by endpoint only (used when push fails with 410/404, sender unknown at call site)
+export async function removePushSubscriptionByEndpoint(endpoint: string): Promise<void> {
+  const activeDb = await getConnectedDb();
+  await activeDb.collection("users").updateMany(
+    {},
+    { $pull: { pushSubscriptions: { endpoint } } } as any
+  );
 }
 
 export async function verifyUserPassword(userId: string, passwordHash: string): Promise<boolean> {
