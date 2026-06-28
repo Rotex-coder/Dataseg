@@ -1898,9 +1898,18 @@ export default function App() {
                     </div>
                     
                     {notificationPermission === "granted" ? (
-                      <div className="text-[11px] font-semibold text-[#00a884] flex items-center gap-1.5 bg-[#0b141a] px-3 py-2.5 rounded-xl border border-[#00a884]/20">
-                        <CheckCircle2 className="w-4 h-4" />
-                        {t.notificationGranted}
+                      <div className="space-y-2">
+                        <div className="text-[11px] font-semibold text-[#00a884] flex items-center gap-1.5 bg-[#0b141a]/60 px-3 py-2.5 rounded-xl border border-[#00a884]/20">
+                          <CheckCircle2 className="w-4 h-4 text-[#00a884]" />
+                          {t.notificationGranted}
+                        </div>
+                        <button
+                          onClick={sendTestNotification}
+                          className="w-full py-2.5 bg-[#00a884] hover:bg-[#008f70] text-[#111b21] font-bold text-xs rounded-xl transition-all shadow-md active:scale-95 cursor-pointer flex items-center justify-center space-x-1.5"
+                        >
+                          <Bell className="w-3.5 h-3.5" />
+                          <span>{lang === "TR" ? "Test Bildirimi Gönder (4 Saniye)" : "Test Bildirişi Göndər (4 Saniyə)"}</span>
+                        </button>
                       </div>
                     ) : notificationPermission === "denied" ? (
                       <div className="text-[11px] font-semibold text-rose-400 flex items-center gap-1.5 bg-rose-950/20 px-3 py-2.5 rounded-xl border border-rose-950/40">
