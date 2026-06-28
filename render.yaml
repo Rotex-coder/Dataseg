@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: whatsapp-clone
+    runtime: node
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3000
+      - key: GEMINI_API_KEY
+        sync: false # Set your Gemini API key in the Render Dashboard
