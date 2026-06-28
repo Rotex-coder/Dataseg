@@ -720,9 +720,10 @@ export default function App() {
         }
       };
 
-      // Add connection error logger
+      // Add connection state logger
       sse.onerror = (err) => {
-        console.error("SSE Connection Stream Error/Disconnect. Re-establishing...", err);
+        // EventSource automatically auto-reconnects on transient network drops or proxy resets
+        console.debug("SSE Connection state changed or auto-reconnecting.", err);
       };
 
       return () => {
