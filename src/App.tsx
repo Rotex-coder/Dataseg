@@ -19,6 +19,7 @@ import {
   CheckCheck,
   Check,
   Bell,
+  BellOff,
   CheckCircle2,
   AlertCircle,
   Camera,
@@ -140,8 +141,18 @@ export default function App() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [typedMessage, setTypedMessage] = useState("");
 
+  const [mutedContactIds, setMutedContactIds] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem("muted_contacts");
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+      return [];
+    }
+  });
+
   const activeContactIdRef = useRef<string | null>(null);
   const contactsRef = useRef<(User & { lastMessage: Message | null })[]>([]);
+  const mutedContactIdsRef = useRef<string[]>([]);
 
   // Sync state with refs to prevent EventSource reconnection thrashing
   useEffect(() => {
@@ -151,6 +162,11 @@ export default function App() {
   useEffect(() => {
     contactsRef.current = contacts;
   }, [contacts]);
+
+  useEffect(() => {
+    mutedContactIdsRef.current = mutedContactIds;
+    localStorage.setItem("muted_contacts", JSON.stringify(mutedContactIds));
+  }, [mutedContactIds]);
 
   // Modals & Menu States
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -256,7 +272,7 @@ export default function App() {
     }
   };
 
-  // Play beautiful, warm, bubble-pop and chime notification sound using Web Audio API
+  // Play premium, soft, warm water-droplet & glass chime notification sound
   const playNotificationSound = () => {
     try {
       const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
@@ -265,54 +281,56 @@ export default function App() {
       
       const now = ctx.currentTime;
       
-      // Let's build a beautiful, high-end warm arpeggio chime (A-major 9th feeling):
-      // Tone 1 (Warm body undercurrent): C#5 (554.37 Hz), starts at 0.0s, decays beautifully over 0.8s
+      // Let's use a lowpass filter to make the sound warm and soft, removing any high frequency clicks
+      const filter = ctx.createBiquadFilter();
+      filter.type = "lowpass";
+      filter.frequency.setValueAtTime(3000, now);
+      filter.connect(ctx.destination);
+
+      // Note 1: E6 (1318.51 Hz) - Soft plucky glass drop
       const osc1 = ctx.createOscillator();
       const gain1 = ctx.createGain();
       osc1.type = "sine";
-      osc1.frequency.setValueAtTime(554.37, now);
-      gain1.gain.setValueAtTime(0.08, now);
-      gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.8);
+      osc1.frequency.setValueAtTime(1318.51, now);
+      
+      gain1.gain.setValueAtTime(0.0, now);
+      gain1.gain.linearRampToValueAtTime(0.08, now + 0.01);
+      gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+      
       osc1.connect(gain1);
-      gain1.connect(ctx.destination);
+      gain1.connect(filter);
       osc1.start(now);
-      osc1.stop(now + 0.8);
+      osc1.stop(now + 0.3);
 
-      // Tone 2 (Sweet mid chime): E5 (659.25 Hz), starts at 0.04s, decays beautifully over 0.6s
+      // Note 2: A6 (1760.00 Hz) - Higher sparkling chime, slightly delayed
       const osc2 = ctx.createOscillator();
       const gain2 = ctx.createGain();
       osc2.type = "sine";
-      osc2.frequency.setValueAtTime(659.25, now + 0.04);
-      gain2.gain.setValueAtTime(0.09, now + 0.04);
-      gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.64);
+      osc2.frequency.setValueAtTime(1760.00, now + 0.08);
+      
+      gain2.gain.setValueAtTime(0.0, now + 0.08);
+      gain2.gain.linearRampToValueAtTime(0.09, now + 0.09);
+      gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+      
       osc2.connect(gain2);
-      gain2.connect(ctx.destination);
-      osc2.start(now + 0.04);
-      osc2.stop(now + 0.64);
+      gain2.connect(filter);
+      osc2.start(now + 0.08);
+      osc2.stop(now + 0.45);
 
-      // Tone 3 (High clear sparkling bell): A5 (880.00 Hz), starts at 0.08s, decays over 0.5s
+      // Note 3: C#7 (2217.46 Hz) - Ultra high sparkle, further delayed
       const osc3 = ctx.createOscillator();
       const gain3 = ctx.createGain();
       osc3.type = "sine";
-      osc3.frequency.setValueAtTime(880.00, now + 0.08);
-      gain3.gain.setValueAtTime(0.10, now + 0.08);
-      gain3.gain.exponentialRampToValueAtTime(0.001, now + 0.58);
+      osc3.frequency.setValueAtTime(2217.46, now + 0.15);
+      
+      gain3.gain.setValueAtTime(0.0, now + 0.15);
+      gain3.gain.linearRampToValueAtTime(0.05, now + 0.16);
+      gain3.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
+      
       osc3.connect(gain3);
-      gain3.connect(ctx.destination);
-      osc3.start(now + 0.08);
-      osc3.stop(now + 0.58);
-
-      // Tone 4 (Ultra-clean modern finish): B5 (987.77 Hz), starts at 0.12s, decays over 0.4s
-      const osc4 = ctx.createOscillator();
-      const gain4 = ctx.createGain();
-      osc4.type = "sine";
-      osc4.frequency.setValueAtTime(987.77, now + 0.12);
-      gain4.gain.setValueAtTime(0.08, now + 0.12);
-      gain4.gain.exponentialRampToValueAtTime(0.001, now + 0.52);
-      osc4.connect(gain4);
-      gain4.connect(ctx.destination);
-      osc4.start(now + 0.12);
-      osc4.stop(now + 0.52);
+      gain3.connect(filter);
+      osc3.start(now + 0.15);
+      osc3.stop(now + 0.5);
     } catch (e) {
       console.error("Failed to play notification sound:", e);
     }
@@ -645,29 +663,44 @@ export default function App() {
 
             // Trigger Browser Push Notification if page/chat is not active
             if (msg.senderId !== user.id) {
-              playNotificationSound();
-              const isTabBackground = document.hidden;
-              const isChatNotFocused = currentActiveContactId !== msg.senderId;
+              const currentMutedIds = mutedContactIdsRef.current;
+              const isMuted = currentMutedIds.includes(msg.senderId);
 
-              if ((isTabBackground || isChatNotFocused) && Notification.permission === "granted") {
-                const senderUser = contactsRef.current.find((c) => c.id === msg.senderId);
-                const senderAvatar = data.senderAvatar || senderUser?.avatar || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(data.senderName || "User")}`;
-                const title = data.senderName || "Yeni Mesaj";
-                const options = {
-                  body: msg.text,
-                  icon: senderAvatar,
-                  badge: "/badge.svg",
-                  tag: msg.senderId, // Groups notifications from the same sender
-                  renotify: true,
-                  data: { senderId: msg.senderId }
-                };
+              if (!isMuted) {
+                playNotificationSound();
+                const isTabBackground = document.hidden;
+                const isChatNotFocused = currentActiveContactId !== msg.senderId;
 
-                // Always prefer Service Worker registration to display notifications, especially on mobile/Android Chrome where new Notification() throws an error.
-                if ("serviceWorker" in navigator) {
-                  navigator.serviceWorker.ready.then((registration) => {
-                    registration.showNotification(title, options);
-                  }).catch((err) => {
-                    console.error("Service worker notification failed, trying native fallback:", err);
+                if ((isTabBackground || isChatNotFocused) && Notification.permission === "granted") {
+                  const senderUser = contactsRef.current.find((c) => c.id === msg.senderId);
+                  const senderAvatar = data.senderAvatar || senderUser?.avatar || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(data.senderName || "User")}`;
+                  const title = data.senderName || "Yeni Mesaj";
+                  const options = {
+                    body: msg.text,
+                    icon: senderAvatar,
+                    badge: "/badge.svg",
+                    tag: msg.senderId, // Groups notifications from the same sender
+                    renotify: true,
+                    data: { senderId: msg.senderId }
+                  };
+
+                  // Always prefer Service Worker registration to display notifications, especially on mobile/Android Chrome where new Notification() throws an error.
+                  if ("serviceWorker" in navigator) {
+                    navigator.serviceWorker.ready.then((registration) => {
+                      registration.showNotification(title, options);
+                    }).catch((err) => {
+                      console.error("Service worker notification failed, trying native fallback:", err);
+                      try {
+                        const notify = new Notification(title, options);
+                        notify.onclick = () => {
+                          window.focus();
+                          setActiveContactId(msg.senderId);
+                        };
+                      } catch (e) {
+                        console.error("Native Notification fallback failed:", e);
+                      }
+                    });
+                  } else {
                     try {
                       const notify = new Notification(title, options);
                       notify.onclick = () => {
@@ -675,18 +708,8 @@ export default function App() {
                         setActiveContactId(msg.senderId);
                       };
                     } catch (e) {
-                      console.error("Native Notification fallback failed:", e);
+                      console.error("Native Notification failed:", e);
                     }
-                  });
-                } else {
-                  try {
-                    const notify = new Notification(title, options);
-                    notify.onclick = () => {
-                      window.focus();
-                      setActiveContactId(msg.senderId);
-                    };
-                  } catch (e) {
-                    console.error("Native Notification failed:", e);
                   }
                 }
               }
@@ -1451,7 +1474,12 @@ export default function App() {
                       />
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between">
-                          <h4 className="text-sm font-semibold text-white truncate">{contact.name}</h4>
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <h4 className="text-sm font-semibold text-white truncate">{contact.name}</h4>
+                            {mutedContactIds.includes(contact.id) && (
+                              <BellOff className="w-3.5 h-3.5 text-amber-500/80 flex-shrink-0" />
+                            )}
+                          </div>
                           {lastMsg && (
                             <span className="text-[10px] text-[#8696a0] font-medium ml-1 flex-shrink-0">
                               {formatTime(lastMsg.createdAt)}
@@ -1542,6 +1570,30 @@ export default function App() {
                       ID: {activeContact.id.substring(0, 6)}
                     </span>
                     
+                    {/* Mute/Unmute Notifications Button */}
+                    <button
+                      onClick={() => {
+                        const isMuted = mutedContactIds.includes(activeContact.id);
+                        if (isMuted) {
+                          setMutedContactIds(prev => prev.filter(id => id !== activeContact.id));
+                        } else {
+                          setMutedContactIds(prev => [...prev, activeContact.id]);
+                        }
+                      }}
+                      className={`p-2 rounded-lg transition-all cursor-pointer active:scale-95 flex items-center justify-center ${
+                        mutedContactIds.includes(activeContact.id)
+                          ? 'bg-amber-500/10 text-amber-500 hover:bg-amber-500/20'
+                          : 'hover:bg-[#202c33] text-[#aebac1]'
+                      }`}
+                      title={mutedContactIds.includes(activeContact.id) ? (lang === "TR" ? "Bildirimleri Aç" : "Bildirişləri Aç") : (lang === "TR" ? "Sessize Al" : "Səssizə Al")}
+                    >
+                      {mutedContactIds.includes(activeContact.id) ? (
+                        <BellOff className="w-5 h-5" />
+                      ) : (
+                        <Bell className="w-5 h-5" />
+                      )}
+                    </button>
+
                     {/* Delete Contact Button */}
                     <button
                       onClick={() => handleDeleteContact(activeContact.id)}
