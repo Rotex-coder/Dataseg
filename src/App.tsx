@@ -244,53 +244,7 @@ export default function App() {
     }
   };
 
-  // Test Push Notification Handler
-  const sendTestNotification = () => {
-    if (!("Notification" in window)) {
-      showToast(lang === "TR" ? "Tarayıcınız anlık bildirimleri desteklemiyor." : "Brauzeriniz anlıq bildirişləri dəstəkləmir.", "error");
-      return;
-    }
-    if (Notification.permission !== "granted") {
-      showToast(lang === "TR" ? "Lütfen önce yukarıdaki 'Bildirim İzni Ver' seçeneği ile izin verin." : "Zəhmət olmasa əvvəlcə yuxarıdakı 'Bildiriş İcazəsi Ver' seçimi ilə icazə verin.", "error");
-      requestNotificationPermission();
-      return;
-    }
 
-    showToast(
-      lang === "TR" 
-        ? "Test bildirimi 4 saniye sonra gönderilecek. Lütfen sekmeyi kapatın, arka plana alın veya cihazınızı kilitleyin!" 
-        : "Test bildirişi 4 saniyə sonra göndəriləcək. Zəhmət olmasa səhifəni arxa plana keçirin və ya cihazınızı kilidləyin!", 
-      "info"
-    );
-
-    setTimeout(() => {
-      const isTr = lang === "TR";
-      const title = isTr ? "Aysel Yılmaz" : "Aysel Məmmədova";
-      const options = {
-        body: isTr 
-          ? "Selam! Push bildirimleri ve PWA harika çalışıyor! 🎉" 
-          : "Salam! Anlıq bildirişlər və PWA əla işləyir! 🎉",
-        icon: "https://api.dicebear.com/7.x/avataaars/svg?seed=Aysel",
-        badge: "/icon.png",
-        tag: "test-notification",
-        data: {
-          senderId: "test-bot"
-        }
-      };
-
-      if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-        navigator.serviceWorker.ready.then((registration) => {
-          registration.showNotification(title, options);
-        });
-      } else {
-        try {
-          new Notification(title, options);
-        } catch (err) {
-          console.error("Local notification failed, serviceWorker fallback:", err);
-        }
-      }
-    }, 4000);
-  };
 
   // Capture PWA Install Prompt
   useEffect(() => {
@@ -626,7 +580,7 @@ export default function App() {
                 const options = {
                   body: msg.text,
                   icon: senderAvatar,
-                  badge: "/icon.png",
+                  badge: "/badge.svg",
                   tag: msg.senderId, // Groups notifications from the same sender
                   renotify: true,
                   data: { senderId: msg.senderId }
@@ -1724,26 +1678,6 @@ export default function App() {
                     : "Mesajlaşmağa başlamaq üçün sol menyudan bir söhbət seçin və ya yeni istifadəçi əlavə edin."}
                 </p>
 
-                {/* Temporary Push Notification Test Card */}
-                <div className="mt-8 w-full max-w-xs p-4 bg-[#00a884]/5 border border-[#00a884]/25 rounded-2xl flex flex-col items-center space-y-3 shadow-lg">
-                  <div className="flex items-center space-x-2 text-[#00a884]">
-                    <Bell className="w-4 h-4" />
-                    <span className="text-[11px] font-bold uppercase tracking-wider">{lang === "TR" ? "Bildirim Test Paneli" : "Bildiriş Test Paneli"}</span>
-                  </div>
-                  <p className="text-[11px] text-gray-400">
-                    {lang === "TR" 
-                      ? "Push bildirimleri test etmek için butona basın, ardından sekmeyi kapatın veya arka plana atın!" 
-                      : "Push bildirişləri test etmək üçün düyməyə basın, ardından səhifəni bağlayın və ya arxa plana keçirin!"}
-                  </p>
-                  <button
-                    onClick={sendTestNotification}
-                    className="w-full py-2 bg-[#00a884] hover:bg-[#008f70] text-[#111b21] font-bold text-xs rounded-xl transition-all shadow-md active:scale-95 cursor-pointer flex items-center justify-center space-x-1.5"
-                  >
-                    <Bell className="w-3.5 h-3.5" />
-                    <span>{lang === "TR" ? "Test Bildirimi Gönder (4 Saniye)" : "Test Bildirişi Göndər (4 Saniyə)"}</span>
-                  </button>
-                </div>
-
                 {/* Elegant instructions to install PWA on empty screen */}
                 {!isPwaInstalled && (
                   <div className="mt-10 max-w-sm p-4 bg-[#111b21]/70 border border-[#222e35] rounded-2xl flex flex-col items-center space-y-3 shadow-md">
@@ -1901,18 +1835,9 @@ export default function App() {
                     </div>
                     
                     {notificationPermission === "granted" ? (
-                      <div className="space-y-2">
-                        <div className="text-[11px] font-semibold text-[#00a884] flex items-center gap-1.5 bg-[#0b141a]/60 px-3 py-2.5 rounded-xl border border-[#00a884]/20">
-                          <CheckCircle2 className="w-4 h-4 text-[#00a884]" />
-                          {t.notificationGranted}
-                        </div>
-                        <button
-                          onClick={sendTestNotification}
-                          className="w-full py-2.5 bg-[#00a884] hover:bg-[#008f70] text-[#111b21] font-bold text-xs rounded-xl transition-all shadow-md active:scale-95 cursor-pointer flex items-center justify-center space-x-1.5"
-                        >
-                          <Bell className="w-3.5 h-3.5" />
-                          <span>{lang === "TR" ? "Test Bildirimi Gönder (4 Saniye)" : "Test Bildirişi Göndər (4 Saniyə)"}</span>
-                        </button>
+                      <div className="text-[11px] font-semibold text-[#00a884] flex items-center gap-1.5 bg-[#0b141a]/60 px-3 py-2.5 rounded-xl border border-[#00a884]/20">
+                        <CheckCircle2 className="w-4 h-4 text-[#00a884]" />
+                        {t.notificationGranted}
                       </div>
                     ) : notificationPermission === "denied" ? (
                       <div className="text-[11px] font-semibold text-rose-400 flex items-center gap-1.5 bg-rose-950/20 px-3 py-2.5 rounded-xl border border-rose-950/40">
