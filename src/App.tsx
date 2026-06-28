@@ -1010,169 +1010,170 @@ export default function App() {
           </div>
         </div>
       ) : !user ? (
-        <div id="auth_container" className="flex-1 flex flex-col md:flex-row items-center justify-center p-4 bg-[#0a1014] relative">
-          
-          {/* Subtle Branding Watermark */}
-          <div className="absolute top-6 left-6 flex items-center space-x-2">
-            <div className="p-2 bg-[#00a884] rounded-xl shadow-lg">
-              <MessageCircle className="w-6 h-6 text-[#111b21]" />
-            </div>
-            <span className="text-xl font-bold tracking-tight text-white font-sans">Sade <span className="text-[#00a884]">WhatsApp</span></span>
-          </div>
-
-          <div className="w-full max-w-md bg-[#111b21] p-8 rounded-2xl border border-[#222e35] shadow-2xl transition-all duration-300">
-            <div className="text-center mb-8">
-              <h2 className="text-3xl font-extrabold tracking-tight text-white mb-2">
-                {authMode === "login" ? t.login : t.register}
-              </h2>
-              <p className="text-sm text-[#8696a0] font-medium leading-relaxed max-w-xs mx-auto">
-                {t.aboutText}
-              </p>
+        <div id="auth_container" className="flex-1 overflow-y-auto bg-[#0a1014] relative scrollbar-thin scrollbar-thumb-[#202c33]">
+          <div className="min-h-full flex flex-col items-center justify-center p-4 sm:p-6 md:p-8 w-full">
+            
+            {/* Subtle Branding Watermark */}
+            <div className="flex items-center space-x-2 mb-6 flex-shrink-0">
+              <div className="p-2 bg-[#00a884] rounded-xl shadow-lg">
+                <MessageCircle className="w-5 h-5 text-[#111b21]" />
+              </div>
+              <span className="text-lg font-bold tracking-tight text-white font-sans">Sade <span className="text-[#00a884]">WhatsApp</span></span>
             </div>
 
-            <form id="auth_form" onSubmit={authMode === "login" ? handleLogin : handleRegister} className="space-y-5">
-              
-              {authMode === "register" && (
-                <>
-                  {/* Register Avatar Selector */}
-                  <div className="flex flex-col items-center space-y-2 pb-2">
-                    <label className="text-xs font-semibold uppercase tracking-wider text-[#8696a0]">
-                      {lang === "TR" ? "Profil Resmi (İsteğe Bağlı)" : "Profil Şəkli (İstəyə Bağlı)"}
-                    </label>
-                    <div className="relative group cursor-pointer">
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={async (e) => {
-                          const file = e.target.files?.[0];
-                          if (!file) return;
-                          if (!file.type.startsWith("image/")) {
-                            setRegAvatarError(lang === "TR" ? "Yalnızca görsel dosyaları yükleyebilirsiniz." : "Yalnızca şəkil faylları yükləyə bilərsiniz.");
-                            return;
-                          }
-                          if (file.size > 10 * 1024 * 1024) {
-                            setRegAvatarError(lang === "TR" ? "Görsel en fazla 10MB boyutunda olabilir." : "Şəkil maksimum 10MB ola bilər.");
-                            return;
-                          }
-                          setRegAvatarLoading(true);
-                          setRegAvatarError(null);
-                          try {
-                            const base64 = await compressAndResizeImage(file, 400, 400, 0.85);
-                            setRegAvatar(base64);
-                          } catch (err: any) {
-                            setRegAvatarError(err.message || "Görsel yüklenemedi.");
-                          } finally {
-                            setRegAvatarLoading(false);
-                          }
-                        }}
-                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                        disabled={regAvatarLoading}
-                      />
-                      <div className="w-20 h-20 rounded-full border-2 border-dashed border-[#222e35] group-hover:border-[#00a884] bg-[#202c33] flex flex-col items-center justify-center overflow-hidden transition-all relative shadow-inner">
-                        {regAvatar ? (
-                          <img src={regAvatar} alt="Profile preview" className="w-full h-full object-cover" />
-                        ) : regAvatarLoading ? (
-                          <Loader2 className="w-6 h-6 text-[#00a884] animate-spin" />
-                        ) : (
-                          <div className="flex flex-col items-center text-center p-2">
-                            <Camera className="w-5 h-5 text-[#8696a0] group-hover:text-[#00a884] transition-colors" />
-                            <span className="text-[9px] text-[#8696a0] mt-1 group-hover:text-gray-300 transition-colors">
-                              {lang === "TR" ? "Yükle" : "Yüklə"}
-                            </span>
-                          </div>
-                        )}
+            <div className="w-full max-w-md bg-[#111b21] p-6 sm:p-8 rounded-2xl border border-[#222e35] shadow-2xl transition-all duration-300">
+              <div className="text-center mb-6">
+                <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white mb-1.5">
+                  {authMode === "login" ? t.login : t.register}
+                </h2>
+                <p className="text-xs sm:text-sm text-[#8696a0] font-medium leading-relaxed max-w-xs mx-auto">
+                  {t.aboutText}
+                </p>
+              </div>
+
+              <form id="auth_form" onSubmit={authMode === "login" ? handleLogin : handleRegister} className="space-y-4">
+                
+                {authMode === "register" && (
+                  <>
+                    {/* Register Avatar Selector */}
+                    <div className="flex flex-col items-center space-y-1.5 pb-1">
+                      <label className="text-[11px] font-semibold uppercase tracking-wider text-[#8696a0]">
+                        {lang === "TR" ? "Profil Resmi (İsteğe Bağlı)" : "Profil Şəkli (İstəyə Bağlı)"}
+                      </label>
+                      <div className="relative group cursor-pointer">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+                            if (!file.type.startsWith("image/")) {
+                              setRegAvatarError(lang === "TR" ? "Yalnızca görsel dosyaları yükleyebilirsiniz." : "Yalnızca şəkil faylları yükləyə bilərsiniz.");
+                              return;
+                            }
+                            if (file.size > 10 * 1024 * 1024) {
+                              setRegAvatarError(lang === "TR" ? "Görsel en fazla 10MB boyutunda olabilir." : "Şəkil maksimum 10MB ola bilər.");
+                              return;
+                            }
+                            setRegAvatarLoading(true);
+                            setRegAvatarError(null);
+                            try {
+                              const base64 = await compressAndResizeImage(file, 400, 400, 0.85);
+                              setRegAvatar(base64);
+                            } catch (err: any) {
+                              setRegAvatarError(err.message || "Görsel yüklenemedi.");
+                            } finally {
+                              setRegAvatarLoading(false);
+                            }
+                          }}
+                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                          disabled={regAvatarLoading}
+                        />
+                        <div className="w-16 h-16 rounded-full border-2 border-dashed border-[#222e35] group-hover:border-[#00a884] bg-[#202c33] flex flex-col items-center justify-center overflow-hidden transition-all relative shadow-inner">
+                          {regAvatar ? (
+                            <img src={regAvatar} alt="Profile preview" className="w-full h-full object-cover" />
+                          ) : regAvatarLoading ? (
+                            <Loader2 className="w-5 h-5 text-[#00a884] animate-spin" />
+                          ) : (
+                            <div className="flex flex-col items-center text-center p-1.5">
+                              <Camera className="w-4.5 h-4.5 text-[#8696a0] group-hover:text-[#00a884] transition-colors" />
+                              <span className="text-[8px] text-[#8696a0] mt-0.5 group-hover:text-gray-300 transition-colors">
+                                {lang === "TR" ? "Yükle" : "Yüklə"}
+                              </span>
+                            </div>
+                          )}
+                        </div>
                       </div>
+                      {regAvatarError && (
+                        <p className="text-[10px] text-rose-400 font-semibold text-center max-w-[200px]">
+                          {regAvatarError}
+                        </p>
+                      )}
                     </div>
-                    {regAvatarError && (
-                      <p className="text-[10px] text-rose-400 font-semibold text-center max-w-[200px]">
-                        {regAvatarError}
-                      </p>
-                    )}
-                  </div>
 
-                  <div className="space-y-1">
-                    <label className="text-xs font-semibold uppercase tracking-wider text-[#8696a0]">{t.name}</label>
-                    <div className="relative">
-                      <input
-                        type="text"
-                        placeholder="Örn: Sunay Seyidli"
-                        value={regName}
-                        onChange={(e) => setRegName(e.target.value)}
-                        className="w-full bg-[#202c33] border border-[#222e35] rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-[#00a884] focus:ring-1 focus:ring-[#00a884] transition-all"
-                        required
-                      />
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-semibold uppercase tracking-wider text-[#8696a0]">{t.name}</label>
+                      <div className="relative">
+                        <input
+                          type="text"
+                          placeholder="Örn: Sunay Seyidli"
+                          value={regName}
+                          onChange={(e) => setRegName(e.target.value)}
+                          className="w-full bg-[#202c33] border border-[#222e35] rounded-xl px-4 py-2.5 text-xs sm:text-sm text-white placeholder-gray-500 focus:outline-none focus:border-[#00a884] focus:ring-1 focus:ring-[#00a884] transition-all"
+                          required
+                        />
+                      </div>
+                      {suggestedHandle && (
+                        <p className="text-[11px] text-[#00a884] mt-0.5 flex items-center gap-1">
+                          <CheckCircle2 className="w-3 h-3" />
+                          Alt Ad: <strong className="font-mono">{suggestedHandle}</strong>
+                        </p>
+                      )}
                     </div>
-                    {suggestedHandle && (
-                      <p className="text-xs text-[#00a884] mt-1 flex items-center gap-1">
-                        <CheckCircle2 className="w-3.5 h-3.5" />
-                        Alt Ad: <strong className="font-mono">{suggestedHandle}</strong>
-                      </p>
-                    )}
-                  </div>
-                </>
-              )}
+                  </>
+                )}
 
-              <div className="space-y-1">
-                <label className="text-xs font-semibold uppercase tracking-wider text-[#8696a0]">{t.email}</label>
-                <input
-                  type="email"
-                  placeholder="name@example.com"
-                  value={authMode === "login" ? loginEmail : regEmail}
-                  onChange={(e) => authMode === "login" ? setLoginEmail(e.target.value) : setRegEmail(e.target.value)}
-                  className="w-full bg-[#202c33] border border-[#222e35] rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-[#00a884] focus:ring-1 focus:ring-[#00a884] transition-all"
-                  required
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs font-semibold uppercase tracking-wider text-[#8696a0]">{t.password}</label>
-                <input
-                  type="password"
-                  placeholder="••••••••"
-                  value={authMode === "login" ? loginPassword : regPassword}
-                  onChange={(e) => authMode === "login" ? setLoginPassword(e.target.value) : setRegPassword(e.target.value)}
-                  className="w-full bg-[#202c33] border border-[#222e35] rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-[#00a884] focus:ring-1 focus:ring-[#00a884] transition-all"
-                  required
-                />
-              </div>
-
-              {authError && (
-                <div className="flex items-center space-x-2 bg-red-950/40 border border-red-900 text-red-400 p-3.5 rounded-xl text-xs font-medium">
-                  <AlertCircle className="w-4 h-4 flex-shrink-0" />
-                  <span>{authError}</span>
+                <div className="space-y-1">
+                  <label className="text-[11px] font-semibold uppercase tracking-wider text-[#8696a0]">{t.email}</label>
+                  <input
+                    type="email"
+                    placeholder="name@example.com"
+                    value={authMode === "login" ? loginEmail : regEmail}
+                    onChange={(e) => authMode === "login" ? setLoginEmail(e.target.value) : setRegEmail(e.target.value)}
+                    className="w-full bg-[#202c33] border border-[#222e35] rounded-xl px-4 py-2.5 text-xs sm:text-sm text-white placeholder-gray-500 focus:outline-none focus:border-[#00a884] focus:ring-1 focus:ring-[#00a884] transition-all"
+                    required
+                  />
                 </div>
-              )}
 
-              <button
-                type="submit"
-                disabled={authLoading}
-                className="w-full bg-[#00a884] hover:bg-[#008f70] text-[#111b21] font-bold py-3.5 px-4 rounded-xl shadow-lg transition-all active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none text-sm tracking-wide mt-2"
-              >
-                {authLoading ? "..." : (authMode === "login" ? t.login : t.register)}
-              </button>
-            </form>
+                <div className="space-y-1">
+                  <label className="text-[11px] font-semibold uppercase tracking-wider text-[#8696a0]">{t.password}</label>
+                  <input
+                    type="password"
+                    placeholder="••••••••"
+                    value={authMode === "login" ? loginPassword : regPassword}
+                    onChange={(e) => authMode === "login" ? setLoginPassword(e.target.value) : setRegPassword(e.target.value)}
+                    className="w-full bg-[#202c33] border border-[#222e35] rounded-xl px-4 py-2.5 text-xs sm:text-sm text-white placeholder-gray-500 focus:outline-none focus:border-[#00a884] focus:ring-1 focus:ring-[#00a884] transition-all"
+                    required
+                  />
+                </div>
 
-            <div className="mt-6 text-center">
-              <button
-                onClick={() => {
-                  setAuthMode(authMode === "login" ? "register" : "login");
-                  setAuthError(null);
-                }}
-                className="text-xs font-medium text-[#8696a0] hover:text-white transition-all underline decoration-dotted underline-offset-4"
-              >
-                {authMode === "login" ? t.noAccount : t.hasAccount}
-              </button>
-            </div>
+                {authError && (
+                  <div className="flex items-center space-x-2 bg-red-950/40 border border-red-900 text-red-400 p-3 rounded-xl text-[11px] font-medium animate-shake">
+                    <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                    <span>{authError}</span>
+                  </div>
+                )}
 
-            {/* Quick language toggle on login */}
-            <div className="flex justify-center items-center gap-4 mt-8 pt-6 border-t border-[#222e35]">
-              <button 
-                onClick={() => handleLanguageChange("TR")} 
-                className={`px-2.5 py-1 rounded text-xs font-bold transition-all ${lang === "TR" ? "bg-[#00a884] text-[#111b21]" : "text-[#8696a0] hover:text-white"}`}
-              >
-                Türkçe
-              </button>
-              <span className="text-[#222e35]">|</span>
+                <button
+                  type="submit"
+                  disabled={authLoading}
+                  className="w-full bg-[#00a884] hover:bg-[#008f70] text-[#111b21] font-bold py-3 px-4 rounded-xl shadow-lg transition-all active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none text-xs sm:text-sm tracking-wide mt-2"
+                >
+                  {authLoading ? "..." : (authMode === "login" ? t.login : t.register)}
+                </button>
+              </form>
+
+              <div className="mt-5 text-center">
+                <button
+                  onClick={() => {
+                    setAuthMode(authMode === "login" ? "register" : "login");
+                    setAuthError(null);
+                  }}
+                  className="text-xs font-medium text-[#8696a0] hover:text-white transition-all underline decoration-dotted underline-offset-4"
+                >
+                  {authMode === "login" ? t.noAccount : t.hasAccount}
+                </button>
+              </div>
+
+              {/* Quick language toggle on login */}
+              <div className="flex justify-center items-center gap-4 mt-6 pt-5 border-t border-[#222e35]">
+                <button 
+                  onClick={() => handleLanguageChange("TR")} 
+                  className={`px-2.5 py-1 rounded text-xs font-bold transition-all ${lang === "TR" ? "bg-[#00a884] text-[#111b21]" : "text-[#8696a0] hover:text-white"}`}
+                >
+                  Türkçe
+                </button>
+                <span className="text-[#222e35]">|</span>
               <button 
                 onClick={() => handleLanguageChange("AZ")} 
                 className={`px-2.5 py-1 rounded text-xs font-bold transition-all ${lang === "AZ" ? "bg-[#00a884] text-[#111b21]" : "text-[#8696a0] hover:text-white"}`}
@@ -1181,6 +1182,7 @@ export default function App() {
               </button>
             </div>
 
+          </div>
           </div>
         </div>
       ) : (
