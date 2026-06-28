@@ -586,23 +586,32 @@ export default function App() {
                   data: { senderId: msg.senderId }
                 };
 
-                // Use Service Worker if registered to display background-compatible notifications
-                if ("serviceWorker" in navigator && navigator.serviceWorker.controller) {
+                // Always prefer Service Worker registration to display notifications, especially on mobile/Android Chrome where new Notification() throws an error.
+                if ("serviceWorker" in navigator) {
                   navigator.serviceWorker.ready.then((registration) => {
                     registration.showNotification(title, options);
-                  }).catch(() => {
+                  }).catch((err) => {
+                    console.error("Service worker notification failed, trying native fallback:", err);
+                    try {
+                      const notify = new Notification(title, options);
+                      notify.onclick = () => {
+                        window.focus();
+                        setActiveContactId(msg.senderId);
+                      };
+                    } catch (e) {
+                      console.error("Native Notification fallback failed:", e);
+                    }
+                  });
+                } else {
+                  try {
                     const notify = new Notification(title, options);
                     notify.onclick = () => {
                       window.focus();
                       setActiveContactId(msg.senderId);
                     };
-                  });
-                } else {
-                  const notify = new Notification(title, options);
-                  notify.onclick = () => {
-                    window.focus();
-                    setActiveContactId(msg.senderId);
-                  };
+                  } catch (e) {
+                    console.error("Native Notification failed:", e);
+                  }
                 }
               }
             }
