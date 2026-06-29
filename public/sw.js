@@ -42,6 +42,8 @@ self.addEventListener('fetch', (event) => {
 
 // Function to dynamically turn a square icon/avatar into a perfect circle for notifications
 async function makeCircleIcon(imageUrl) {
+  if (!imageUrl) return '/icon.png';
+  
   if (
     typeof OffscreenCanvas === 'undefined' || 
     typeof createImageBitmap === 'undefined' || 
@@ -51,10 +53,29 @@ async function makeCircleIcon(imageUrl) {
   }
   
   try {
-    const response = await fetch(imageUrl);
-    if (!response.ok) return imageUrl;
+    // If it's a Dicebear SVG, convert to PNG so it can be drawn on canvas
+    if (imageUrl.includes('/initials/svg?seed=')) {
+      imageUrl = imageUrl.replace('/initials/svg?seed=', '/initials/png?seed=');
+    }
+
+    let blob;
+    if (imageUrl.startsWith('data:')) {
+      const parts = imageUrl.split(',');
+      const mimeMatch = parts[0].match(/:(.*?);/);
+      const mime = mimeMatch ? mimeMatch[1] : 'image/png';
+      const bstr = atob(parts[1]);
+      let n = bstr.length;
+      const u8arr = new Uint8Array(n);
+      while (n--) {
+        u8arr[n] = bstr.charCodeAt(n);
+      }
+      blob = new Blob([u8arr], { type: mime });
+    } else {
+      const response = await fetch(imageUrl);
+      if (!response.ok) return imageUrl;
+      blob = await response.blob();
+    }
     
-    const blob = await response.blob();
     const imageBitmap = await createImageBitmap(blob);
     
     const size = Math.min(imageBitmap.width, imageBitmap.height);
@@ -65,6 +86,9 @@ async function makeCircleIcon(imageUrl) {
     const ctx = canvas.getContext('2d');
     
     if (!ctx) return imageUrl;
+    
+    // Clear rect to be transparent
+    ctx.clearRect(0, 0, targetSize, targetSize);
     
     // Draw circular clipping path
     ctx.beginPath();

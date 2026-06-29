@@ -108,6 +108,75 @@ function compressAndResizeImage(file: File, maxWidth: number = 800, maxHeight: n
   });
 }
 
+// Function to dynamically turn a square icon/avatar into a perfect circle for notifications
+const makeCircleIcon = async (imageUrl: string): Promise<string> => {
+  if (!imageUrl) return "/icon.png";
+  try {
+    if (imageUrl.includes('/initials/svg?seed=')) {
+      imageUrl = imageUrl.replace('/initials/svg?seed=', '/initials/png?seed=');
+    }
+
+    let blob: Blob;
+    if (imageUrl.startsWith('data:')) {
+      const parts = imageUrl.split(',');
+      const mimeMatch = parts[0].match(/:(.*?);/);
+      const mime = mimeMatch ? mimeMatch[1] : 'image/png';
+      const bstr = atob(parts[1]);
+      let n = bstr.length;
+      const u8arr = new Uint8Array(n);
+      while (n--) {
+        u8arr[n] = bstr.charCodeAt(n);
+      }
+      blob = new Blob([u8arr], { type: mime });
+    } else {
+      const response = await fetch(imageUrl);
+      if (!response.ok) return imageUrl;
+      blob = await response.blob();
+    }
+    
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.onload = () => {
+        const size = Math.min(img.width, img.height);
+        const targetSize = Math.min(size, 192);
+        
+        const canvas = document.createElement("canvas");
+        canvas.width = targetSize;
+        canvas.height = targetSize;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          resolve(imageUrl);
+          return;
+        }
+        
+        ctx.clearRect(0, 0, targetSize, targetSize);
+        ctx.beginPath();
+        ctx.arc(targetSize / 2, targetSize / 2, targetSize / 2, 0, Math.PI * 2);
+        ctx.closePath();
+        ctx.clip();
+        
+        const sx = (img.width - size) / 2;
+        const sy = (img.height - size) / 2;
+        ctx.drawImage(img, sx, sy, size, size, 0, 0, targetSize, targetSize);
+        
+        resolve(canvas.toDataURL("image/png"));
+      };
+      img.onerror = () => resolve(imageUrl);
+      
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        img.src = reader.result as string;
+      };
+      reader.onerror = () => resolve(imageUrl);
+      reader.readAsDataURL(blob);
+    });
+  } catch (err) {
+    console.warn("Failed to create circular notification icon:", err);
+    return imageUrl;
+  }
+};
+
 export default function App() {
   // Authentication State
   const [user, setUser] = useState<User | null>(null);
@@ -769,11 +838,12 @@ export default function App() {
 
                 if ((isTabBackground || isChatNotFocused) && Notification.permission === "granted") {
                   const senderUser = contactsRef.current.find((c) => c.id === msg.senderId);
-                  const senderAvatar = data.senderAvatar || senderUser?.avatar || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(data.senderName || "User")}`;
+                  const senderAvatar = data.senderAvatar || senderUser?.avatar || `https://api.dicebear.com/7.x/initials/png?seed=${encodeURIComponent(data.senderName || "User")}`;
                   const title = data.senderName || "Yeni Mesaj";
-                  const options = {
-                    body: msg.text,
-                    icon: senderAvatar,
+                  makeCircleIcon(senderAvatar).then((circleIcon) => {
+                    const options = {
+                      body: msg.text,
+                      icon: circleIcon,
                     badge: "/badge.svg",
                     tag: msg.senderId, // Groups notifications from the same sender
                     renotify: true,
@@ -807,10 +877,11 @@ export default function App() {
                       console.error("Native Notification failed:", e);
                     }
                   }
-                }
+                });
               }
             }
           }
+        }
 
           // Real-time: Message Edits
           if (data.type === "message_edit") {
