@@ -302,7 +302,18 @@ export default function App() {
 
       const convertedVapidKey = urlBase64ToUint8Array(data.publicKey);
 
-      // 3. Subscribe to Push Manager
+      // 3. Clear existing subscription if any to prevent applicationServerKey mismatch
+      let existingSubscription = await registration.pushManager.getSubscription();
+      if (existingSubscription) {
+        console.log("Found existing push subscription. Unsubscribing to refresh with updated keys...");
+        try {
+          await existingSubscription.unsubscribe();
+        } catch (unsubErr) {
+          console.warn("Failed to unsubscribe existing push subscription:", unsubErr);
+        }
+      }
+
+      // 4. Subscribe to Push Manager with fresh VAPID key
       const subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: convertedVapidKey
@@ -310,7 +321,7 @@ export default function App() {
 
       console.log("Push Notification subscription object created:", subscription);
 
-      // 4. Send subscription to our server
+      // 5. Send subscription to our server
       const subscribeRes = await fetch("/api/notifications/subscribe", {
         method: "POST",
         headers: {

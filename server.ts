@@ -39,9 +39,9 @@ const JWT_SECRET = process.env.JWT_SECRET || "sadewa-super-secret-key-1337";
 
 import webpush from "web-push";
 
-const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY || "BE96C0qW3C-S3Q_JMHvkaAZN_pdD4R1dnPxFx-BY0d9mHccqRWqKXKZ_0pFQDpry1t18ARNkzqNAc1ck277A2-g";
-const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY || "EFkd_GH4VT5AUlMh60VCHzuxAJ7FyypT7Oqokx3xHq0";
-const VAPID_SUBJECT = process.env.VAPID_SUBJECT || "mailto:sunayseyidli01@gmail.com";
+const VAPID_PUBLIC_KEY = (process.env.VAPID_PUBLIC_KEY || "BE96C0qW3C-S3Q_JMHvkaAZN_pdD4R1dnPxFx-BY0d9mHccqRWqKXKZ_0pFQDpry1t18ARNkzqNAc1ck277A2-g").trim().replace(/\s+/g, "");
+const VAPID_PRIVATE_KEY = (process.env.VAPID_PRIVATE_KEY || "EFkd_GH4VT5AUlMh60VCHzuxAJ7FyypT7Oqokx3xHq0").trim().replace(/\s+/g, "");
+const VAPID_SUBJECT = (process.env.VAPID_SUBJECT || "mailto:sunayseyidli01@gmail.com").trim().replace(/\s+/g, "");
 
 try {
   webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
