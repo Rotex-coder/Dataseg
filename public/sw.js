@@ -1,4 +1,4 @@
-const CACHE_NAME = 'sadewa-cache-v1';
+const CACHE_NAME = 'sadewa-cache-v2';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
@@ -42,7 +42,7 @@ self.addEventListener('fetch', (event) => {
 
 // Push Notification handler
 self.addEventListener('push', (event) => {
-  let data = { title: 'Sade WhatsApp', body: 'Yeni bir mesajınız var!', icon: '/icon.png' };
+  let data = { title: 'Sade WhatsApp', body: 'Yeni bir mesajınız var!', icon: '/icon.jpg' };
   
   if (event.data) {
     try {
@@ -54,7 +54,7 @@ self.addEventListener('push', (event) => {
 
   const options = {
     body: data.body,
-    icon: data.icon || '/icon.png',
+    icon: data.icon || '/icon.jpg',
     badge: '/badge.svg',
     vibrate: [100, 50, 100],
     data: {

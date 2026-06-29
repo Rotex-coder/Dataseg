@@ -9,56 +9,56 @@
   "orientation": "portrait-primary",
   "icons": [
     {
-      "src": "/icon.png",
-      "type": "image/png",
+      "src": "/icon.jpg",
+      "type": "image/jpeg",
       "sizes": "72x72",
       "purpose": "any"
     },
     {
-      "src": "/icon.png",
-      "type": "image/png",
+      "src": "/icon.jpg",
+      "type": "image/jpeg",
       "sizes": "96x96",
       "purpose": "any"
     },
     {
-      "src": "/icon.png",
-      "type": "image/png",
+      "src": "/icon.jpg",
+      "type": "image/jpeg",
       "sizes": "128x128",
       "purpose": "any"
     },
     {
-      "src": "/icon.png",
-      "type": "image/png",
+      "src": "/icon.jpg",
+      "type": "image/jpeg",
       "sizes": "144x144",
       "purpose": "any"
     },
     {
-      "src": "/icon.png",
-      "type": "image/png",
+      "src": "/icon.jpg",
+      "type": "image/jpeg",
       "sizes": "192x192",
       "purpose": "any"
     },
     {
-      "src": "/icon.png",
-      "type": "image/png",
+      "src": "/icon.jpg",
+      "type": "image/jpeg",
       "sizes": "192x192",
       "purpose": "maskable"
     },
     {
-      "src": "/icon.png",
-      "type": "image/png",
+      "src": "/icon.jpg",
+      "type": "image/jpeg",
       "sizes": "384x384",
       "purpose": "any"
     },
     {
-      "src": "/icon.png",
-      "type": "image/png",
+      "src": "/icon.jpg",
+      "type": "image/jpeg",
       "sizes": "512x512",
       "purpose": "any"
     },
     {
-      "src": "/icon.png",
-      "type": "image/png",
+      "src": "/icon.jpg",
+      "type": "image/jpeg",
       "sizes": "512x512",
       "purpose": "maskable"
     }
