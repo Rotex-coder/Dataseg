@@ -187,8 +187,6 @@ export default function App() {
 
   // Notification Permission State
   const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>("default");
-  const [testNotificationLoading, setTestNotificationLoading] = useState(false);
-  const [testNotificationResult, setTestNotificationResult] = useState<string | null>(null);
 
   // Avatar Upload States
   const [avatarLoading, setAvatarLoading] = useState(false);
@@ -360,48 +358,6 @@ export default function App() {
       if (permission === "granted") {
         await subscribeToPushNotifications();
       }
-    }
-  };
-
-  // Send Test Push Notification
-  const sendTestPushNotification = async () => {
-    if (!token) return;
-    setTestNotificationLoading(true);
-    setTestNotificationResult(null);
-    try {
-      // First, ensure we refresh the subscription to the latest VAPID key
-      await subscribeToPushNotifications();
-
-      const res = await fetch("/api/notifications/test", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
-        }
-      });
-      const data = await res.json();
-      if (data.success) {
-        setTestNotificationResult(
-          lang === "TR" 
-            ? "Test bildirimi gönderildi! Telefonunuzun bildirim panelini kontrol edin." 
-            : "Test bildirişi göndərildi! Telefonunuzun bildiriş panelini yoxlayın."
-        );
-      } else {
-        setTestNotificationResult(
-          (lang === "TR" ? "Hata: " : "Xəta: ") + (data.error || "Abonelik sunucuya ulaşmadı.")
-        );
-      }
-    } catch (err: any) {
-      console.error("Test notification error:", err);
-      setTestNotificationResult(
-        (lang === "TR" ? "Bağlantı hatası: " : "Bağlantı xətası: ") + err.message
-      );
-    } finally {
-      setTestNotificationLoading(false);
-      // Clear result after 6 seconds
-      setTimeout(() => {
-        setTestNotificationResult(null);
-      }, 6000);
     }
   };
 
@@ -2118,28 +2074,9 @@ export default function App() {
                     </div>
                     
                     {notificationPermission === "granted" ? (
-                      <div className="space-y-2">
-                        <div className="text-[11px] font-semibold text-[#00a884] flex items-center gap-1.5 bg-[#0b141a]/60 px-3 py-2.5 rounded-xl border border-[#00a884]/20">
-                          <CheckCircle2 className="w-4 h-4 text-[#00a884]" />
-                          {t.notificationGranted}
-                        </div>
-                        <button
-                          onClick={sendTestPushNotification}
-                          disabled={testNotificationLoading}
-                          className="w-full py-2.5 bg-[#00a884]/20 hover:bg-[#00a884]/30 text-xs font-bold text-[#00a884] rounded-xl border border-[#00a884]/30 transition-all cursor-pointer flex items-center justify-center space-x-2 disabled:opacity-50"
-                        >
-                          {testNotificationLoading ? (
-                            <div className="w-3.5 h-3.5 border-2 border-[#00a884] border-t-transparent rounded-full animate-spin" />
-                          ) : (
-                            <Send className="w-3.5 h-3.5" />
-                          )}
-                          <span>{lang === "TR" ? "Test Bildirimi Gönder" : "Test Bildirişi Göndər"}</span>
-                        </button>
-                        {testNotificationResult && (
-                          <div className={`text-[10px] p-2 rounded-lg text-center ${testNotificationResult.includes("Hata") || testNotificationResult.includes("Xəta") || testNotificationResult.includes("hatası") || testNotificationResult.includes("xətası") ? "bg-rose-950/20 text-rose-400 border border-rose-950/40" : "bg-[#00a884]/10 text-white border border-[#00a884]/20"}`}>
-                            {testNotificationResult}
-                          </div>
-                        )}
+                      <div className="text-[11px] font-semibold text-[#00a884] flex items-center gap-1.5 bg-[#0b141a]/60 px-3 py-2.5 rounded-xl border border-[#00a884]/20">
+                        <CheckCircle2 className="w-4 h-4 text-[#00a884]" />
+                        {t.notificationGranted}
                       </div>
                     ) : notificationPermission === "denied" ? (
                       <div className="text-[11px] font-semibold text-rose-400 flex items-center gap-1.5 bg-rose-950/20 px-3 py-2.5 rounded-xl border border-rose-950/40">
