@@ -272,75 +272,6 @@ export default function App() {
     }
   };
 
-  // Convert a base64url VAPID public key string into the Uint8Array format the Push API expects
-  const urlBase64ToUint8Array = (base64String: string) => {
-    const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
-    const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
-    const rawData = window.atob(base64);
-    const outputArray = new Uint8Array(rawData.length);
-    for (let i = 0; i < rawData.length; i++) {
-      outputArray[i] = rawData.charCodeAt(i);
-    }
-    return outputArray;
-  };
-
-  // Register a real Web Push subscription with the browser + tell our server about it.
-  // This is what lets notifications arrive even when the app/tab is fully closed,
-  // unlike the SSE-based in-app notifications which only work while the app is open.
-  useEffect(() => {
-    if (!user || !token) return;
-    if (notificationPermission !== "granted") return;
-    if (!("serviceWorker" in navigator) || !("PushManager" in window)) return;
-
-    let cancelled = false;
-
-    (async () => {
-      try {
-        const registration = await navigator.serviceWorker.ready;
-
-        // Already subscribed in this browser? Just make sure the server has it too.
-        let subscription = await registration.pushManager.getSubscription();
-
-        if (!subscription) {
-          const keyRes = await fetch("/api/push/public-key");
-          if (!keyRes.ok) {
-            // Server has no VAPID keys configured yet - nothing we can do client-side.
-            console.warn("Push notifications not configured on server (missing VAPID keys).");
-            return;
-          }
-          const { publicKey } = await keyRes.json();
-          subscription = await registration.pushManager.subscribe({
-            userVisibleOnly: true,
-            applicationServerKey: urlBase64ToUint8Array(publicKey)
-          });
-        }
-
-        if (cancelled || !subscription) return;
-
-        const subJson = subscription.toJSON();
-        await fetch("/api/push/subscribe", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`
-          },
-          body: JSON.stringify({
-            subscription: {
-              endpoint: subJson.endpoint,
-              keys: subJson.keys
-            }
-          })
-        });
-      } catch (err) {
-        console.error("Push subscription setup failed:", err);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [user, token, notificationPermission]);
-
   // Play premium, soft, warm water-droplet & glass chime notification sound
   const playNotificationSound = () => {
     try {
@@ -747,7 +678,7 @@ export default function App() {
                   const options = {
                     body: msg.text,
                     icon: senderAvatar,
-                    badge: "/badge.png",
+                    badge: "/badge.svg",
                     tag: msg.senderId, // Groups notifications from the same sender
                     renotify: true,
                     data: { senderId: msg.senderId }

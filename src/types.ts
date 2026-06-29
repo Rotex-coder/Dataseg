@@ -1,11 +1,3 @@
-export interface PushSubscriptionData {
-  endpoint: string;
-  keys: {
-    p256dh: string;
-    auth: string;
-  };
-}
-
 export interface User {
   id: string;
   name: string;
@@ -14,7 +6,6 @@ export interface User {
   avatar: string;
   contacts: string[]; // List of user IDs of added contacts
   createdAt: string;
-  pushSubscriptions?: PushSubscriptionData[]; // Web Push subscriptions (one per device/browser)
 }
 
 export interface Message {

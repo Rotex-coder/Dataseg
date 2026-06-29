@@ -1,6 +1,5 @@
 import express from "express";
 import path from "path";
-import webpush from "web-push";
 import { createServer as createViteServer } from "vite";
 import { 
   getDbStatus, 
@@ -21,10 +20,7 @@ import {
   getIncomingContactRequests,
   sendContactRequest,
   respondToContactRequest,
-  removeContact,
-  addPushSubscription,
-  removePushSubscription,
-  removePushSubscriptionByEndpoint
+  removeContact
 } from "./src/db.js";
 import { 
   cleanTurkishCharacters, 
@@ -37,47 +33,6 @@ import { User, Message } from "./src/types.js";
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || "sadewa-super-secret-key-1337";
-
-// --- Web Push (VAPID) setup ---
-// Generate your own pair once with: node -e "console.log(require('web-push').generateVAPIDKeys())"
-// and put them in your environment (Render dashboard -> Environment), never commit real keys to git.
-const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY || "";
-const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY || "";
-const VAPID_SUBJECT = process.env.VAPID_SUBJECT || "mailto:admin@example.com";
-
-const isPushConfigured = Boolean(VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY);
-if (isPushConfigured) {
-  webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
-  console.log("Web Push (VAPID) configured.");
-} else {
-  console.warn("VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY not set — real push notifications (app closed) will not work. SSE-based in-app notifications still work while the app is open.");
-}
-
-// Send a real push notification to every subscribed device of a user.
-// Safe to call even if the user has no subscriptions or push isn't configured.
-async function sendPushToUser(userId: string, payload: { title: string; body: string; icon?: string; senderId?: string }) {
-  if (!isPushConfigured) return;
-  try {
-    const user = await findUserById(userId);
-    const subs = user?.pushSubscriptions || [];
-    if (subs.length === 0) return;
-
-    await Promise.all(subs.map(async (sub) => {
-      try {
-        await webpush.sendNotification(sub as any, JSON.stringify(payload));
-      } catch (err: any) {
-        // 404/410 means the subscription is gone (browser data cleared, uninstalled, etc.) - clean it up
-        if (err?.statusCode === 404 || err?.statusCode === 410) {
-          await removePushSubscriptionByEndpoint(sub.endpoint);
-        } else {
-          console.error(`Push send failed for user ${userId}:`, err?.message || err);
-        }
-      }
-    }));
-  } catch (err) {
-    console.error("sendPushToUser error:", err);
-  }
-}
 
 app.use(express.json({ limit: "10mb" }));
 
@@ -518,20 +473,12 @@ app.post("/api/messages", authenticate as any, async (req: AuthRequest, res) => 
 
     const senderUser = await findUserById(req.userId!);
 
-    // Broadcast message to both users (in-app, only works while app is open)
+    // Broadcast message to both users
     broadcastToChat(req.userId!, receiverId, { 
       type: "new_message", 
       message: newMsg,
       senderName: senderUser?.name || "Biri",
       senderAvatar: senderUser?.avatar || ""
-    });
-
-    // Real push notification to the receiver's devices (works even if app is fully closed)
-    sendPushToUser(receiverId, {
-      title: senderUser?.name || "Yeni Mesaj",
-      body: text,
-      icon: senderUser?.avatar || "/icon.png",
-      senderId: req.userId!
     });
 
     res.json(newMsg);
@@ -617,47 +564,6 @@ app.post("/api/messages/:id/delete", authenticate as any, async (req: AuthReques
   } catch (err) {
     console.error("Delete message error:", err);
     res.status(500).json({ error: "Mesaj silinemedi." });
-  }
-});
-
-// 13. Get VAPID public key (client needs this to subscribe)
-app.get("/api/push/public-key", (req, res) => {
-  if (!isPushConfigured) {
-    res.status(503).json({ error: "Push notifications not configured on server." });
-    return;
-  }
-  res.json({ publicKey: VAPID_PUBLIC_KEY });
-});
-
-// 14. Register a push subscription for the current user's device/browser
-app.post("/api/push/subscribe", authenticate as any, async (req: AuthRequest, res) => {
-  const { subscription } = req.body;
-  if (!subscription || !subscription.endpoint || !subscription.keys) {
-    res.status(400).json({ error: "Geçersiz subscription verisi." });
-    return;
-  }
-  try {
-    await addPushSubscription(req.userId!, subscription);
-    res.json({ success: true });
-  } catch (err) {
-    console.error("Push subscribe error:", err);
-    res.status(500).json({ error: "Subscription kaydedilemedi." });
-  }
-});
-
-// 15. Remove a push subscription (e.g. user disabled notifications on this device)
-app.post("/api/push/unsubscribe", authenticate as any, async (req: AuthRequest, res) => {
-  const { endpoint } = req.body;
-  if (!endpoint) {
-    res.status(400).json({ error: "Endpoint gereklidir." });
-    return;
-  }
-  try {
-    await removePushSubscription(req.userId!, endpoint);
-    res.json({ success: true });
-  } catch (err) {
-    console.error("Push unsubscribe error:", err);
-    res.status(500).json({ error: "Subscription silinemedi." });
   }
 });
 
