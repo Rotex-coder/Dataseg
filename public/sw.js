@@ -1,4 +1,4 @@
-const CACHE_NAME = 'sadewa-cache-v4';
+const CACHE_NAME = 'sadewa-cache-v5';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
@@ -40,6 +40,57 @@ self.addEventListener('fetch', (event) => {
   );
 });
 
+// Function to dynamically turn a square icon/avatar into a perfect circle for notifications
+async function makeCircleIcon(imageUrl) {
+  if (
+    typeof OffscreenCanvas === 'undefined' || 
+    typeof createImageBitmap === 'undefined' || 
+    typeof FileReader === 'undefined'
+  ) {
+    return imageUrl;
+  }
+  
+  try {
+    const response = await fetch(imageUrl);
+    if (!response.ok) return imageUrl;
+    
+    const blob = await response.blob();
+    const imageBitmap = await createImageBitmap(blob);
+    
+    const size = Math.min(imageBitmap.width, imageBitmap.height);
+    // Limit canvas size for memory and performance
+    const targetSize = Math.min(size, 192);
+    
+    const canvas = new OffscreenCanvas(targetSize, targetSize);
+    const ctx = canvas.getContext('2d');
+    
+    if (!ctx) return imageUrl;
+    
+    // Draw circular clipping path
+    ctx.beginPath();
+    ctx.arc(targetSize / 2, targetSize / 2, targetSize / 2, 0, Math.PI * 2);
+    ctx.closePath();
+    ctx.clip();
+    
+    // Draw centered square crop of original image
+    const sx = (imageBitmap.width - size) / 2;
+    const sy = (imageBitmap.height - size) / 2;
+    ctx.drawImage(imageBitmap, sx, sy, size, size, 0, 0, targetSize, targetSize);
+    
+    const outputBlob = await canvas.convertToBlob({ type: 'image/png' });
+    
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result);
+      reader.onerror = () => resolve(imageUrl);
+      reader.readAsDataURL(outputBlob);
+    });
+  } catch (err) {
+    console.warn("Failed to create circular notification icon:", err);
+    return imageUrl;
+  }
+}
+
 // Push Notification handler
 self.addEventListener('push', (event) => {
   let data = { title: 'Sade WhatsApp', body: 'Yeni bir mesajınız var!', icon: '/icon.png' };
@@ -52,21 +103,30 @@ self.addEventListener('push', (event) => {
     }
   }
 
-  const options = {
-    body: data.body,
-    icon: data.icon || '/icon.png',
-    badge: '/badge.svg',
-    vibrate: [100, 50, 100],
-    data: {
-      dateOfArrival: Date.now(),
-      primaryKey: '1',
-      senderId: data.senderId
+  const showNotificationPromise = (async () => {
+    let iconUrl = data.icon || '/icon.png';
+    try {
+      iconUrl = await makeCircleIcon(iconUrl);
+    } catch (err) {
+      console.error("Failed to process circular icon:", err);
     }
-  };
 
-  event.waitUntil(
-    self.registration.showNotification(data.title, options)
-  );
+    const options = {
+      body: data.body,
+      icon: iconUrl,
+      badge: '/badge.svg',
+      vibrate: [100, 50, 100],
+      data: {
+        dateOfArrival: Date.now(),
+        primaryKey: '1',
+        senderId: data.senderId
+      }
+    };
+
+    return self.registration.showNotification(data.title, options);
+  })();
+
+  event.waitUntil(showNotificationPromise);
 });
 
 // Handle notification click to open/focus app and select chat
