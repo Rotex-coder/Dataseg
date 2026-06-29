@@ -440,6 +440,24 @@ app.post("/api/notifications/subscribe", authenticate as any, async (req: AuthRe
   }
 });
 
+// Test notification route
+app.post("/api/notifications/test", authenticate as any, async (req: AuthRequest, res) => {
+  try {
+    const user = await findUserById(req.userId!);
+    console.log(`Sending test notification to user: ${user?.name || req.userId}`);
+    await sendPushNotification(req.userId!, {
+      title: "Sade WhatsApp Test 🚀",
+      body: "Harika! Bildirim altyapınız başarıyla çalışıyor! 👍",
+      icon: "/icon.png",
+      senderId: req.userId!
+    });
+    res.json({ success: true, message: "Test bildirimi gönderildi." });
+  } catch (err) {
+    console.error("Test notification error:", err);
+    res.status(500).json({ error: "Test bildirimi gönderilemedi." });
+  }
+});
+
 // 9. Get Messages between current user and contact
 app.get("/api/messages/:contactId", authenticate as any, async (req: AuthRequest, res) => {
   const { contactId } = req.params;
