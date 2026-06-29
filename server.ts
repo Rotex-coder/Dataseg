@@ -551,7 +551,7 @@ app.post("/api/messages", authenticate as any, async (req: AuthRequest, res) => 
     sendPushNotification(receiverId, {
       title: senderUser?.name || "Sade WhatsApp",
       body: text,
-      icon: senderUser?.avatar || "/icon.jpg",
+      icon: senderUser?.avatar || "/icon.png",
       senderId: req.userId!
     }).catch(err => {
       console.error("Background push notification failed:", err);
