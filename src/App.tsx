@@ -264,11 +264,81 @@ export default function App() {
     }
   }, []);
 
+  // Helper to convert VAPID base64 to Uint8Array
+  const urlBase64ToUint8Array = (base64String: string) => {
+    const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+    const base64 = (base64String + padding)
+      .replace(/\-/g, "+")
+      .replace(/_/g, "/");
+    const rawData = window.atob(base64);
+    const outputArray = new Uint8Array(rawData.length);
+    for (let i = 0; i < rawData.length; ++i) {
+      outputArray[i] = rawData.charCodeAt(i);
+    }
+    return outputArray;
+  };
+
+  // Register and subscribe to push notifications
+  const subscribeToPushNotifications = async () => {
+    if (!("serviceWorker" in navigator) || !("PushManager" in window) || !token || !user) {
+      console.log("Push notifications or Service Worker not supported or user not authenticated.");
+      return;
+    }
+
+    try {
+      // 1. Get active Service Worker registration
+      const registration = await navigator.serviceWorker.ready;
+      if (!registration) {
+        console.log("No active Service Worker registration found.");
+        return;
+      }
+
+      // 2. Fetch VAPID Public Key from backend
+      const response = await fetch("/api/notifications/vapid-public-key");
+      const data = await response.json();
+      if (!data.publicKey) {
+        throw new Error("Could not retrieve VAPID Public Key.");
+      }
+
+      const convertedVapidKey = urlBase64ToUint8Array(data.publicKey);
+
+      // 3. Subscribe to Push Manager
+      const subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: convertedVapidKey
+      });
+
+      console.log("Push Notification subscription object created:", subscription);
+
+      // 4. Send subscription to our server
+      const subscribeRes = await fetch("/api/notifications/subscribe", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({ subscription })
+      });
+
+      const subscribeData = await subscribeRes.json();
+      if (subscribeData.success) {
+        console.log("Push Notification subscription saved on server successfully!");
+      } else {
+        console.error("Server failed to save Push subscription:", subscribeData.error);
+      }
+    } catch (err) {
+      console.error("Error subscribing to Push Notifications:", err);
+    }
+  };
+
   // Request Notification Permission
   const requestNotificationPermission = async () => {
     if ("Notification" in window) {
       const permission = await Notification.requestPermission();
       setNotificationPermission(permission);
+      if (permission === "granted") {
+        await subscribeToPushNotifications();
+      }
     }
   };
 
@@ -585,6 +655,13 @@ export default function App() {
       fetchIncomingRequests();
     }
   }, [user, token]);
+
+  // Register push subscriptions automatically on auth when permission is granted
+  useEffect(() => {
+    if (user && token && notificationPermission === "granted") {
+      subscribeToPushNotifications();
+    }
+  }, [user, token, notificationPermission]);
 
   // Fetch messages when active contact changes
   useEffect(() => {

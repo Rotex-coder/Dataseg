@@ -333,3 +333,24 @@ export async function removeContact(userId: string, contactId: string): Promise<
     ]
   });
 }
+
+export async function savePushSubscription(userId: string, subscription: any): Promise<void> {
+  const activeDb = await getConnectedDb();
+  await activeDb.collection("push_subscriptions").updateOne(
+    { endpoint: subscription.endpoint },
+    { $set: { userId, subscription, updatedAt: new Date().toISOString() } },
+    { upsert: true }
+  );
+}
+
+export async function getUserPushSubscriptions(userId: string): Promise<any[]> {
+  const activeDb = await getConnectedDb();
+  const docs = await activeDb.collection("push_subscriptions").find({ userId }).toArray();
+  return docs.map(doc => doc.subscription);
+}
+
+export async function deletePushSubscription(endpoint: string): Promise<void> {
+  const activeDb = await getConnectedDb();
+  await activeDb.collection("push_subscriptions").deleteOne({ endpoint });
+}
+

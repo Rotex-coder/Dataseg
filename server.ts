@@ -20,7 +20,10 @@ import {
   getIncomingContactRequests,
   sendContactRequest,
   respondToContactRequest,
-  removeContact
+  removeContact,
+  savePushSubscription,
+  getUserPushSubscriptions,
+  deletePushSubscription
 } from "./src/db.js";
 import { 
   cleanTurkishCharacters, 
@@ -33,6 +36,19 @@ import { User, Message } from "./src/types.js";
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || "sadewa-super-secret-key-1337";
+
+import webpush from "web-push";
+
+const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY || "BE96C0qW3C-S3Q_JMHvkaAZN_pdD4R1dnPxFx-BY0d9mHccqRWqKXKZ_0pFQDpry1t18ARNkzqNAc1ck277A2-g";
+const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY || "EFkd_GH4VT5AUlMh60VCHzuxAJ7FyypT7Oqokx3xHq0";
+const VAPID_SUBJECT = process.env.VAPID_SUBJECT || "mailto:sunayseyidli01@gmail.com";
+
+try {
+  webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
+  console.log("VAPID details set successfully!");
+} catch (err) {
+  console.error("Failed to set VAPID details:", err);
+}
 
 app.use(express.json({ limit: "10mb" }));
 
@@ -404,6 +420,26 @@ app.get("/api/users/contacts", authenticate as any, async (req: AuthRequest, res
   }
 });
 
+// 8.5. Get VAPID Public Key and Register Push Subscriptions
+app.get("/api/notifications/vapid-public-key", (req, res) => {
+  res.json({ publicKey: VAPID_PUBLIC_KEY });
+});
+
+app.post("/api/notifications/subscribe", authenticate as any, async (req: AuthRequest, res) => {
+  const { subscription } = req.body;
+  if (!subscription || !subscription.endpoint) {
+    res.status(400).json({ error: "Abonelik bilgisi gereklidir." });
+    return;
+  }
+  try {
+    await savePushSubscription(req.userId!, subscription);
+    res.json({ success: true });
+  } catch (err) {
+    console.error("Save subscription error:", err);
+    res.status(500).json({ error: "Abonelik kaydedilemedi." });
+  }
+});
+
 // 9. Get Messages between current user and contact
 app.get("/api/messages/:contactId", authenticate as any, async (req: AuthRequest, res) => {
   const { contactId } = req.params;
@@ -448,6 +484,36 @@ app.post("/api/messages/read", authenticate as any, async (req: AuthRequest, res
   }
 });
 
+// Helper to send push notifications to all user's subscriptions
+async function sendPushNotification(receiverId: string, payload: any) {
+  try {
+    const subscriptions = await getUserPushSubscriptions(receiverId);
+    if (!subscriptions || subscriptions.length === 0) {
+      return;
+    }
+
+    console.log(`Sending push notification to user ${receiverId} across ${subscriptions.length} subscriptions.`);
+    const payloadString = JSON.stringify(payload);
+
+    const promises = subscriptions.map(async (sub) => {
+      try {
+        await webpush.sendNotification(sub, payloadString);
+      } catch (err: any) {
+        if (err.statusCode === 410 || err.statusCode === 404) {
+          console.log(`Removing expired or invalid push subscription for user ${receiverId}`);
+          await deletePushSubscription(sub.endpoint);
+        } else {
+          console.error(`Error sending push notification to a subscription for user ${receiverId}:`, err);
+        }
+      }
+    });
+
+    await Promise.all(promises);
+  } catch (err) {
+    console.error(`Failed to send push notifications to user ${receiverId}:`, err);
+  }
+}
+
 // 10. Send New Message
 app.post("/api/messages", authenticate as any, async (req: AuthRequest, res) => {
   const { receiverId, text } = req.body;
@@ -479,6 +545,16 @@ app.post("/api/messages", authenticate as any, async (req: AuthRequest, res) => 
       message: newMsg,
       senderName: senderUser?.name || "Biri",
       senderAvatar: senderUser?.avatar || ""
+    });
+
+    // Send Push Notification in background
+    sendPushNotification(receiverId, {
+      title: senderUser?.name || "Sade WhatsApp",
+      body: text,
+      icon: senderUser?.avatar || "/icon.jpg",
+      senderId: req.userId!
+    }).catch(err => {
+      console.error("Background push notification failed:", err);
     });
 
     res.json(newMsg);
