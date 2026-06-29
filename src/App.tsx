@@ -302,26 +302,34 @@ export default function App() {
 
       const convertedVapidKey = urlBase64ToUint8Array(data.publicKey);
 
-      // 3. Clear existing subscription if any to prevent applicationServerKey mismatch
-      let existingSubscription = await registration.pushManager.getSubscription();
-      if (existingSubscription) {
-        console.log("Found existing push subscription. Unsubscribing to refresh with updated keys...");
+      // 3. Get or reuse existing subscription
+      let subscription = await registration.pushManager.getSubscription();
+
+      if (subscription) {
+        console.log("Reusing existing push subscription:", subscription);
+      } else {
+        console.log("No existing push subscription found. Registering a new one...");
         try {
-          await existingSubscription.unsubscribe();
-        } catch (unsubErr) {
-          console.warn("Failed to unsubscribe existing push subscription:", unsubErr);
+          subscription = await registration.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: convertedVapidKey
+          });
+        } catch (subErr) {
+          console.warn("Direct subscription failed, attempting to clear and recreate:", subErr);
+          let tempSub = await registration.pushManager.getSubscription();
+          if (tempSub) {
+            await tempSub.unsubscribe().catch(() => {});
+          }
+          subscription = await registration.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: convertedVapidKey
+          });
         }
       }
 
-      // 4. Subscribe to Push Manager with fresh VAPID key
-      const subscription = await registration.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: convertedVapidKey
-      });
+      console.log("Push Notification subscription object:", subscription);
 
-      console.log("Push Notification subscription object created:", subscription);
-
-      // 5. Send subscription to our server
+      // 4. Send subscription to our server (ensure it is always updated on server side)
       const subscribeRes = await fetch("/api/notifications/subscribe", {
         method: "POST",
         headers: {
